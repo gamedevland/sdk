@@ -7,9 +7,9 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @gamedevland/engine",
-    "typecheck": "npm run typecheck -w @gamedevland/engine",
-    "clean": "npm run clean -w @gamedevland/engine"
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present"
   },
   "devDependencies": {
     "@types/howler": "^2.2.12",

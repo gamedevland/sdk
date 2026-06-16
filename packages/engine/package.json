@@ -98,7 +98,7 @@
   "scripts": {
     "clean": "rimraf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit",
-    "build": "npm run clean && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json"
+    "build": "npm run clean && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths"
   },
   "dependencies": {
     "@spd789562/particle-emitter": "^1.0.2",

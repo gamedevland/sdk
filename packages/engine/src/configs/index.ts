@@ -1,5 +1,6 @@
 /** Public API barrel for the configs subsystem. */
 export * from './types';
+export * from './common/LocaleCatalog';
 export * from './common/Locales';
 export * from './common/LocaleDictionaryConfigDecoder';
 export * from './common/TextStyles';
