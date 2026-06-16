@@ -1,7 +1,6 @@
 {
   "name": "@gamedevland/engine",
-  "version": "0.0.0-alpha.1",
-  "private": true,
+  "version": "0.0.1",
   "type": "module",
   "description": "HTML5 game engine SDK for AI-assisted web game development.",
   "main": "./dist/index.js",
@@ -99,6 +98,9 @@
     "clean": "rimraf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit",
     "build": "npm run clean && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@spd789562/particle-emitter": "^1.0.2",
