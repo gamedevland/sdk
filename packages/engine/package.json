@@ -1,0 +1,110 @@
+{
+  "name": "@gamedevland/engine",
+  "version": "0.0.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "description": "HTML5 game engine SDK for AI-assisted web game development.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./assets": {
+      "types": "./dist/assets/index.d.ts",
+      "import": "./dist/assets/index.js"
+    },
+    "./audio": {
+      "types": "./dist/audio/index.d.ts",
+      "import": "./dist/audio/index.js"
+    },
+    "./commands": {
+      "types": "./dist/commands/index.d.ts",
+      "import": "./dist/commands/index.js"
+    },
+    "./configs": {
+      "types": "./dist/configs/index.d.ts",
+      "import": "./dist/configs/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./di": {
+      "types": "./dist/di/index.d.ts",
+      "import": "./dist/di/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors/index.d.ts",
+      "import": "./dist/errors/index.js"
+    },
+    "./events": {
+      "types": "./dist/events/index.d.ts",
+      "import": "./dist/events/index.js"
+    },
+    "./fsm": {
+      "types": "./dist/fsm/index.d.ts",
+      "import": "./dist/fsm/index.js"
+    },
+    "./input": {
+      "types": "./dist/input/index.d.ts",
+      "import": "./dist/input/index.js"
+    },
+    "./interactions": {
+      "types": "./dist/interactions/index.d.ts",
+      "import": "./dist/interactions/index.js"
+    },
+    "./layouts": {
+      "types": "./dist/layouts/index.d.ts",
+      "import": "./dist/layouts/index.js"
+    },
+    "./physics": {
+      "types": "./dist/physics/index.d.ts",
+      "import": "./dist/physics/index.js"
+    },
+    "./particles": {
+      "types": "./dist/particles/index.d.ts",
+      "import": "./dist/particles/index.js"
+    },
+    "./platforms": {
+      "types": "./dist/platforms/index.d.ts",
+      "import": "./dist/platforms/index.js"
+    },
+    "./prefabs": {
+      "types": "./dist/prefabs/index.d.ts",
+      "import": "./dist/prefabs/index.js"
+    },
+    "./scenes": {
+      "types": "./dist/scenes/index.d.ts",
+      "import": "./dist/scenes/index.js"
+    },
+    "./screen": {
+      "types": "./dist/screen/index.d.ts",
+      "import": "./dist/screen/index.js"
+    },
+    "./tween": {
+      "types": "./dist/tween/index.d.ts",
+      "import": "./dist/tween/index.js"
+    },
+    "./validation": {
+      "types": "./dist/validation/index.d.ts",
+      "import": "./dist/validation/index.js"
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist *.tsbuildinfo",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run clean && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@spd789562/particle-emitter": "^1.0.2",
+    "gsap": "^3.12.5",
+    "howler": "^2.2.4",
+    "matter-js": "^0.20.0",
+    "pixi.js": "^8.16.0"
+  }
+}
