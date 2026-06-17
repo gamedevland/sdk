@@ -1,6 +1,7 @@
 {
   "name": "@gamedevland/vite",
   "version": "0.0.1",
+  "private": true,
   "type": "module",
   "description": "Vite build tooling for Gamedev Land HTML5 games.",
   "main": "./dist/index.js",
@@ -19,9 +20,6 @@
     "pretypecheck": "npm run build -w @gamedevland/engine",
     "typecheck": "tsc --noEmit",
     "build": "npm run clean && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "dependencies": {
     "@gamedevland/engine": "0.0.1"
