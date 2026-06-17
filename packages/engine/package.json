@@ -1,7 +1,6 @@
 {
   "name": "@gamedevland/engine",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
   "description": "HTML5 game engine SDK for AI-assisted web game development.",
   "main": "./dist/index.js",
@@ -9,6 +8,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
