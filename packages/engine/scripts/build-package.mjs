@@ -31,10 +31,7 @@ await build({
       output: {
         entryFileNames: 'sdk.js',
         exports: 'named',
-        generatedCode: {
-          constBindings: true,
-        },
-        inlineDynamicImports: true,
+        codeSplitting: false,
       },
       treeshake: {
         moduleSideEffects: false,

@@ -1,6 +1,6 @@
 import { ListenerRegistry } from './ListenerRegistry';
 
-import type { InputEventBase, InputEventInit, InputHandler, InputType } from './types';
+import type { EngineInputEventInit, InputEventBase, InputHandler, InputType } from './types';
 
 /**
  * InputRouter manages input listeners and event delivery.
@@ -108,7 +108,7 @@ export class InputRouter {
    * Emits an event to node-scoped listeners of the target first, then to global listeners.
    * Propagation can be stopped by calling e.stopPropagation().
    */
-  emit(e0: InputEventInit): void {
+  emit(e0: EngineInputEventInit): void {
     const stop = { v: false };
     const e = {
       ...e0,

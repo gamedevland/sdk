@@ -1,4 +1,4 @@
-import type { InputEventInit } from './types';
+import type { EngineInputEventInit } from './types';
 import type { IEventBus } from '../events/types';
 
 /**
@@ -12,7 +12,7 @@ export class InputChannel {
   /**
    * Publishes the input event to the bus using a standardized type name.
    */
-  publish(e: InputEventInit): void {
+  publish(e: EngineInputEventInit): void {
     this.bus.emit({ type: `INPUT_${e.type.toUpperCase()}`, data: e });
   }
 }

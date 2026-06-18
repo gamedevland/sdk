@@ -93,9 +93,9 @@ export interface ActionConfig {
 /**
  * Single validation issue indicating what went wrong and where in the layout tree.
  */
-export type ValidationIssue = StructuralValidationIssue;
+export type LayoutValidationIssue = StructuralValidationIssue;
 
 /**
  * Result wrapper used by validators: either a successful value or a collection of issues.
  */
-export type ValidationResult<T> = StructuralValidationResult<T>;
+export type LayoutValidationResult<T> = StructuralValidationResult<T>;

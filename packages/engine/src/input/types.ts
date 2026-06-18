@@ -41,4 +41,4 @@ export interface InputEventBase {
 export type InputHandler = (e: InputEventBase) => void;
 
 /** Event shape produced by the manager before routing (no propagation methods yet). */
-export type InputEventInit = Omit<InputEventBase, 'stopPropagation' | 'isPropagationStopped'>;
+export type EngineInputEventInit = Omit<InputEventBase, 'stopPropagation' | 'isPropagationStopped'>;

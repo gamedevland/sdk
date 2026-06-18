@@ -27,6 +27,6 @@
     "@gamedevland/engine": "0.0.1"
   },
   "peerDependencies": {
-    "vite": "^7.1.0"
+    "vite": "^7.1.0 || ^8.0.0"
   }
 }

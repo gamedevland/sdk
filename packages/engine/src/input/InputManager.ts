@@ -5,7 +5,7 @@ import { PointerTracker } from './PointerTracker';
 import { DragRecognizer } from './recognizers/DragRecognizer';
 import { TapRecognizer } from './recognizers/TapRecognizer';
 
-import type { HitTarget, InputEventInit, InputHandler, InputType, PointerType } from './types';
+import type { EngineInputEventInit, HitTarget, InputHandler, InputType, PointerType } from './types';
 import type { InputRuntime } from '@engine/core';
 import type { SceneLayout } from '@engine/layouts';
 
@@ -266,7 +266,7 @@ export class InputManager {
   /**
    * Emits the event to local router and the engine-wide input channel.
    */
-  private emit(e: InputEventInit): void {
+  private emit(e: EngineInputEventInit): void {
     this.router.emit(e);
     this.engine.inputChannel.publish(e);
   }
@@ -276,7 +276,7 @@ export class InputManager {
     time: number,
     virtual: { x: number; y: number },
     target: HitTarget | undefined,
-  ): Omit<InputEventInit, 'type'> {
+  ): Omit<EngineInputEventInit, 'type'> {
     const base = {
       time,
       pointerId: ev.pointerId,
@@ -293,7 +293,7 @@ export class InputManager {
     virtual: { x: number; y: number },
     target: HitTarget | undefined,
     scale: number,
-  ): Omit<InputEventInit, 'type'> & {
+  ): Omit<EngineInputEventInit, 'type'> & {
     delta: { x?: number; y?: number; z?: number };
   } {
     const base = {

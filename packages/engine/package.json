@@ -3,11 +3,35 @@
   "version": "0.0.1",
   "type": "module",
   "description": "HTML5 game engine SDK for AI-assisted web game development.",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Gamedev Land",
+  "homepage": "https://github.com/gamedevland/sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gamedevland/sdk.git",
+    "directory": "packages/engine"
+  },
+  "bugs": {
+    "url": "https://github.com/gamedevland/sdk/issues"
+  },
+  "keywords": [
+    "gamedev",
+    "html5-game",
+    "game-engine",
+    "pixi",
+    "vite",
+    "typescript",
+    "sdk"
+  ],
   "main": "./dist/sdk.js",
+  "module": "./dist/sdk.js",
   "types": "./dist/sdk.d.ts",
+  "sideEffects": false,
   "files": [
     "dist/sdk.js",
-    "dist/sdk.d.ts"
+    "dist/sdk.d.ts",
+    "README.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public"
