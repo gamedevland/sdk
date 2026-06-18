@@ -3,104 +3,105 @@
   "version": "0.0.1",
   "type": "module",
   "description": "HTML5 game engine SDK for AI-assisted web game development.",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/sdk.js",
+  "types": "./dist/sdk.d.ts",
   "files": [
-    "dist"
+    "dist/sdk.js",
+    "dist/sdk.d.ts"
   ],
   "publishConfig": {
     "access": "public"
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./assets": {
-      "types": "./dist/assets/index.d.ts",
-      "import": "./dist/assets/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./audio": {
-      "types": "./dist/audio/index.d.ts",
-      "import": "./dist/audio/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./commands": {
-      "types": "./dist/commands/index.d.ts",
-      "import": "./dist/commands/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./configs": {
-      "types": "./dist/configs/index.d.ts",
-      "import": "./dist/configs/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./core": {
-      "types": "./dist/core/index.d.ts",
-      "import": "./dist/core/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./di": {
-      "types": "./dist/di/index.d.ts",
-      "import": "./dist/di/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./errors": {
-      "types": "./dist/errors/index.d.ts",
-      "import": "./dist/errors/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./events": {
-      "types": "./dist/events/index.d.ts",
-      "import": "./dist/events/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./fsm": {
-      "types": "./dist/fsm/index.d.ts",
-      "import": "./dist/fsm/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./input": {
-      "types": "./dist/input/index.d.ts",
-      "import": "./dist/input/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./interactions": {
-      "types": "./dist/interactions/index.d.ts",
-      "import": "./dist/interactions/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./layouts": {
-      "types": "./dist/layouts/index.d.ts",
-      "import": "./dist/layouts/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./physics": {
-      "types": "./dist/physics/index.d.ts",
-      "import": "./dist/physics/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./particles": {
-      "types": "./dist/particles/index.d.ts",
-      "import": "./dist/particles/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./platforms": {
-      "types": "./dist/platforms/index.d.ts",
-      "import": "./dist/platforms/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./prefabs": {
-      "types": "./dist/prefabs/index.d.ts",
-      "import": "./dist/prefabs/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./scenes": {
-      "types": "./dist/scenes/index.d.ts",
-      "import": "./dist/scenes/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./screen": {
-      "types": "./dist/screen/index.d.ts",
-      "import": "./dist/screen/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./tween": {
-      "types": "./dist/tween/index.d.ts",
-      "import": "./dist/tween/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     },
     "./validation": {
-      "types": "./dist/validation/index.d.ts",
-      "import": "./dist/validation/index.js"
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
     }
   },
   "scripts": {
     "clean": "rimraf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit",
-    "build": "npm run clean && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths"
+    "build": "npm run clean && tsc --noEmit && node scripts/build-package.mjs && dts-bundle-generator --no-check --project tsconfig.json --out-file dist/sdk.d.ts src/index.ts && node scripts/fix-sdk-dts.mjs"
   },
   "dependencies": {
     "@spd789562/particle-emitter": "^1.0.2",
