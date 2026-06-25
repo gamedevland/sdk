@@ -3,10 +3,31 @@
   "version": "0.0.1",
   "type": "module",
   "description": "Vite build tooling for Gamedev Land HTML5 games.",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Gamedev Land",
+  "homepage": "https://github.com/gamedevland/sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gamedevland/sdk.git",
+    "directory": "packages/vite"
+  },
+  "bugs": {
+    "url": "https://github.com/gamedevland/sdk/issues"
+  },
+  "keywords": [
+    "gamedev",
+    "html5-game",
+    "vite",
+    "typescript",
+    "sdk"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public"
