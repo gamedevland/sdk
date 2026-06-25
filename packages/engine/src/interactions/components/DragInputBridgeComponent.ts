@@ -27,8 +27,13 @@ export class DragInputBridgeComponent extends BaseTypedComponent<DragInputBridge
     this.globalOffs.push(
       engine.input.on('dragstart', (event: InputEventBase) => this.emit(this.config.eventType, 'start', event)),
       engine.input.on('drag', (event: InputEventBase) => this.emit(this.config.eventType, 'move', event)),
-      engine.input.on('dragend', (event: InputEventBase) => this.emit(this.config.eventType, 'end', event)),
-      engine.input.on('pointercancel', (event: InputEventBase) => this.emit(this.config.eventType, 'cancel', event)),
+      engine.input.on('dragend', (event: InputEventBase) =>
+        this.emit(
+          this.config.eventType,
+          event.dragEndReason === 'pointercancel' ? 'cancel' : 'end',
+          event,
+        ),
+      ),
     );
   }
 

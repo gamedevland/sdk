@@ -56,17 +56,6 @@ export class SpdParticleBackend implements ParticleBackend {
       const config = this.presetTextureMapper
         ? this.presetTextureMapper.map(baseConfig)
         : baseConfig;
-      console.debug(
-        `[slide-merge] particles ${JSON.stringify({
-          phase: 'backend-create-emitter',
-          behaviorCount: config.behaviors.length,
-          emitterLifetime: config.emitterLifetime ?? 'none',
-          maxParticles: config.maxParticles ?? 'none',
-          parentId: params.parent.id ?? 'unknown',
-          positionX: params.position?.x ?? config.pos.x,
-          positionY: params.position?.y ?? config.pos.y,
-        })}`,
-      );
       const emitter = new Emitter(particleLayer, config);
       emitter.autoUpdate = false;
 

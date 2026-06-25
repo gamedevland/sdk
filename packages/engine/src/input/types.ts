@@ -1,6 +1,9 @@
 /** Hardware/source type of the pointer producing the event. */
 export type PointerType = 'mouse' | 'touch' | 'pen';
 
+/** Native terminal condition that ended an active drag gesture. */
+export type DragEndReason = 'pointerup' | 'pointercancel';
+
 /** Canonical input event types routed by the input subsystem. */
 export type InputType =
   | 'pointerdown'
@@ -31,6 +34,7 @@ export interface InputEventBase {
   pointerType: PointerType;
   screen: { x: number; y: number };
   virtual: { x: number; y: number };
+  dragEndReason?: DragEndReason;
   delta?: { x?: number; y?: number; z?: number };
   target?: HitTarget;
   stopPropagation(): void;

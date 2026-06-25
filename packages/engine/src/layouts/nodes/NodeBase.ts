@@ -327,6 +327,27 @@ export abstract class NodeBase {
     return this;
   }
 
+  /**
+   * Read the node's untransformed bounds in its own local coordinate space.
+   *
+   * Use this for layout and prefab geometry queries without reaching into the
+   * renderer-specific native view.
+   */
+  getLocalBounds(): {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  } {
+    const bounds = this.view.getLocalBounds();
+    return {
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+    };
+  }
+
   setAnchor(anchor: number): this;
   setAnchor(anchor: { x: number; y: number }): this;
   setAnchor(x: number, y: number): this;

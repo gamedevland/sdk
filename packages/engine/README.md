@@ -39,6 +39,11 @@ import { SchemaDecoder } from '@gamedevland/engine/validation';
 All public entry points resolve to the same compiled SDK bundle, so consumers can choose the import style
 that reads best in their project.
 
+For `dragend` input events, `InputEventBase.dragEndReason` distinguishes a normal pointer release
+(`pointerup`) from a system cancellation (`pointercancel`).
+
+Layout nodes expose `getLocalBounds()` for renderer-independent local geometry queries.
+
 ## TypeScript
 
 The package provides `dist/sdk.d.ts` and is designed for TypeScript consumers using modern ESM tooling.

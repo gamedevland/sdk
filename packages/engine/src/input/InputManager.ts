@@ -220,7 +220,7 @@ export class InputManager {
     const base = this.buildPointerBase(ev, time, { x: st.virtualX, y: st.virtualY }, hit.target);
     if (this.drags.isDragging(ev.pointerId)) {
       // Once drag starts, terminal event must always remain dragend.
-      this.emit({ ...base, type: 'dragend' });
+      this.emit({ ...base, type: 'dragend', dragEndReason: 'pointerup' });
       this.drags.end();
     } else if (this.taps.tryTap(st, st)) {
       // No active drag: evaluate tap purely by durations/distances
@@ -244,7 +244,7 @@ export class InputManager {
     const hit = this.hits.hitTest({ x: st.virtualX, y: st.virtualY });
     const base = this.buildPointerBase(ev, time, { x: st.virtualX, y: st.virtualY }, hit.target);
     if (this.drags.isDragging(ev.pointerId)) {
-      this.emit({ ...base, type: 'dragend' });
+      this.emit({ ...base, type: 'dragend', dragEndReason: 'pointercancel' });
       this.drags.end();
     }
     this.emit({ ...base, type: 'pointercancel' });
