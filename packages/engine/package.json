@@ -1,14 +1,10 @@
 {
   "name": "@gamedevland/engine",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "description": "HTML5 game engine SDK for AI-assisted web game development.",
   "license": "SEE LICENSE IN LICENSE",
   "author": "Gamedev Land",
-  "homepage": "https://github.com/gamedevland/sdk#readme",
-  "bugs": {
-    "url": "https://github.com/gamedevland/sdk/issues"
-  },
   "keywords": [
     "gamedev",
     "html5-game",
