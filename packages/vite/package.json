@@ -1,6 +1,6 @@
 {
   "name": "@gamedevland/vite",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "description": "Vite build tooling for Gamedev Land HTML5 games.",
   "license": "SEE LICENSE IN LICENSE",
@@ -36,7 +36,7 @@
     "build": "npm run clean && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths"
   },
   "dependencies": {
-    "@gamedevland/engine": "0.0.4"
+    "@gamedevland/engine": "0.0.5"
   },
   "peerDependencies": {
     "vite": "^7.1.0 || ^8.0.0"
