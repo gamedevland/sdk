@@ -1,0 +1,51 @@
+name: Publish npm packages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Update npm
+        run: npm install --global npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build engine
+        run: npm run build --workspace @gamedevland/engine
+
+      - name: Build Vite integration
+        run: npm run build --workspace @gamedevland/vite
+
+      - name: Inspect engine package
+        run: npm pack --dry-run --workspace @gamedevland/engine
+
+      - name: Inspect Vite package
+        run: npm pack --dry-run --workspace @gamedevland/vite
+
+      - name: Publish engine
+        run: npm publish --workspace @gamedevland/engine --access public
+
+      - name: Publish Vite integration
+        run: npm publish --workspace @gamedevland/vite --access public
