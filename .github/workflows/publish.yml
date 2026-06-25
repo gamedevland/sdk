@@ -2,6 +2,12 @@ name: Publish npm packages
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish packages to npm after validation
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -45,7 +51,9 @@ jobs:
         run: npm pack --dry-run --workspace @gamedevland/vite
 
       - name: Publish engine
+        if: inputs.publish
         run: npm publish --workspace @gamedevland/engine --access public
 
       - name: Publish Vite integration
+        if: inputs.publish
         run: npm publish --workspace @gamedevland/vite --access public
