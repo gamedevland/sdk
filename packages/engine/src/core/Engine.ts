@@ -19,6 +19,7 @@ import { EngineRuntimeBindings } from './EngineRuntimeBindings';
 import { EngineSubsystemFactory } from './EngineSubsystemFactory';
 import { AdBreakRuntimePolicy } from './runtime/AdBreakRuntimePolicy';
 import { EnginePauseController } from './runtime/EnginePauseController';
+import { RuntimeActivity } from './runtime/RuntimeActivity';
 
 import type { AssetManager } from '../assets';
 import type { AudioManager } from '../audio';
@@ -192,7 +193,10 @@ export class Engine
       screen: this.screen,
       resolveActiveSceneFSM: this.resolveActiveSceneFSM.bind(this),
     });
-    this.runtimeController = new EnginePauseController({ onPausedChanged: this.applyPausedState.bind(this) });
+    this.runtimeController = new EnginePauseController({
+      onPausedChanged: this.applyPausedState.bind(this),
+      onActivityChanged: (reasons) => this.activity.update(reasons),
+    });
     this.platform.setAdBreakHooks(
       new AdBreakRuntimePolicy((paused: boolean) => this.runtimeController.setAdBreakPaused(paused)).createHooks(),
     );
@@ -318,6 +322,8 @@ export class Engine
   setPaused(paused: boolean): void {
     this.runtimeController.setManualPaused(paused);
   }
+
+  readonly activity = new RuntimeActivity();
 
   isPaused(): boolean {
     return this.runtimeController.isPaused();

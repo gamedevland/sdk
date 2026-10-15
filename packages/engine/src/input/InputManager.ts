@@ -280,6 +280,9 @@ export class InputManager {
     const base = {
       time,
       pointerId: ev.pointerId,
+      button: ev.button,
+      buttons: ev.buttons,
+      isPrimary: ev.isPrimary,
       pointerType: this.toPointerType(ev.pointerType),
       screen: { x: ev.clientX, y: ev.clientY },
       virtual,

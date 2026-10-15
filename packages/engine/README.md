@@ -46,6 +46,17 @@ Layout nodes expose `getLocalBounds()` for renderer-independent local geometry q
 
 ## TypeScript
 
+### Runtime activity and pointer metadata (0.0.6)
+
+`SceneRuntime.activity.getSnapshot()` exposes `pageInactive`, `effectivePaused` and
+the current immutable pause `reasons`. `activity.subscribe(listener)` returns a
+disposer and fires whenever the reason set changes, even while the scene ticker
+is paused. Read the initial snapshot explicitly after subscribing. The callback
+runs before the effective pause state is applied, allowing synchronous saves.
+The facade does not pause menus; consumers can pause their world simulation while
+leaving panel input active. Native pointer events expose optional `button`,
+`buttons`, and `isPrimary`; synthetic/wheel events may omit them.
+
 The package provides `dist/sdk.d.ts` and is designed for TypeScript consumers using modern ESM tooling.
 
 Recommended compiler settings:

@@ -1,3 +1,4 @@
+import type { RuntimeActivity } from '../core/runtime/RuntimeActivity';
 import type { AssetManager } from '@engine/assets';
 import type { AudioManager } from '@engine/audio';
 import type { CommandBus } from '@engine/commands';
@@ -21,6 +22,7 @@ import type { Application, Container } from 'pixi.js';
  * Scenes should depend on this contract instead of concrete Engine internals.
  */
 export interface SceneRuntime {
+  readonly activity: RuntimeActivity;
   readonly app: Application;
   readonly audio: AudioManager;
   readonly assets: AssetManager;

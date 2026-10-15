@@ -32,6 +32,10 @@ export interface InputEventBase {
   time: number;
   pointerId: number;
   pointerType: PointerType;
+  /** Native pointer metadata; absent on synthetic and wheel events. */
+  button?: number;
+  buttons?: number;
+  isPrimary?: boolean;
   screen: { x: number; y: number };
   virtual: { x: number; y: number };
   dragEndReason?: DragEndReason;

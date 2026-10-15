@@ -2,8 +2,11 @@ import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '../../erro
 
 import { PageActivityMonitor } from './PageActivityMonitor';
 
+import type { RuntimePauseReason } from './RuntimeActivity';
+
 interface EnginePauseControllerOptions {
   onPausedChanged: (paused: boolean) => void;
+  onActivityChanged?: (reasons: readonly RuntimePauseReason[]) => void;
 }
 
 /**
@@ -83,6 +86,12 @@ export class EnginePauseController {
   }
 
   private recomputePaused(): void {
+    const reasons: RuntimePauseReason[] = [];
+    if (this.pageInactivePaused) reasons.push('pageInactive');
+    if (this.manualPaused) reasons.push('manual');
+    if (this.platformPaused) reasons.push('platform');
+    if (this.adBreakPaused) reasons.push('adBreak');
+    this.options.onActivityChanged?.(reasons);
     const nextPaused =
       this.pageInactivePaused || this.manualPaused || this.adBreakPaused || this.platformPaused;
     if (nextPaused === this.paused) {
