@@ -76,9 +76,15 @@ export class PrefabManager {
     params.parent.addChild(params.localId, node);
     params.parent.view.addChild(node.view);
 
+    let disposed = false;
     return {
       node,
       dispose: async () => {
+        if (disposed) return;
+        disposed = true;
+        if (params.parent.hasChild(params.localId) && params.parent.getChild(params.localId) === node) {
+          params.parent.removeChild(params.localId);
+        }
         const parent = node.view.parent;
         if (parent) {
           parent.removeChild(node.view);

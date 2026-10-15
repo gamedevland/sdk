@@ -48,6 +48,10 @@ Layout nodes expose `getLocalBounds()` for renderer-independent local geometry q
 
 ### Runtime activity and pointer metadata (0.0.6)
 
+Version 0.0.7 makes spawned prefab disposal idempotent and removes the logical
+child registration as well as the rendered node. Disposed local IDs can be reused
+without retaining dead nodes in their parent's registry.
+
 `SceneRuntime.activity.getSnapshot()` exposes `pageInactive`, `effectivePaused` and
 the current immutable pause `reasons`. `activity.subscribe(listener)` returns a
 disposer and fires whenever the reason set changes, even while the scene ticker
