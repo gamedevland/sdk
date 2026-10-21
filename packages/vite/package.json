@@ -1,6 +1,6 @@
 {
   "name": "@gamedevland/vite",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "type": "module",
   "description": "Vite build tooling for Gamedev Land HTML5 games.",
   "license": "SEE LICENSE IN LICENSE",
@@ -15,9 +15,16 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "sideEffects": false,
+  "bin": {
+    "gamedevland": "./dist/cli/entry.js"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "publishConfig": {
@@ -30,13 +37,16 @@
     }
   },
   "scripts": {
+    "test": "node --test tests/*.test.mjs",
     "clean": "rimraf dist *.tsbuildinfo",
     "pretypecheck": "npm run build -w @gamedevland/engine",
     "typecheck": "tsc --noEmit",
     "build": "npm run clean && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths"
   },
   "dependencies": {
-    "@gamedevland/engine": "0.0.5"
+    "@gamedevland/engine": "0.0.5",
+    "@poki/cli": "0.1.19",
+    "fflate": "0.8.3"
   },
   "peerDependencies": {
     "vite": "^7.1.0 || ^8.0.0"

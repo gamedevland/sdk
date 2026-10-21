@@ -8,6 +8,15 @@ on:
         required: true
         type: boolean
         default: false
+      package:
+        description: Package to release
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - engine
+          - vite
 
 permissions:
   contents: read
@@ -47,13 +56,16 @@ jobs:
       - name: Inspect engine package
         run: npm pack --dry-run --workspace @gamedevland/engine
 
+      - name: Test shared tooling
+        run: npm test --workspace @gamedevland/vite
+
       - name: Inspect Vite package
         run: npm pack --dry-run --workspace @gamedevland/vite
 
       - name: Publish engine
-        if: inputs.publish
+        if: inputs.publish && (inputs.package == 'all' || inputs.package == 'engine')
         run: npm publish --workspace @gamedevland/engine --access public
 
       - name: Publish Vite integration
-        if: inputs.publish
+        if: inputs.publish && (inputs.package == 'all' || inputs.package == 'vite')
         run: npm publish --workspace @gamedevland/vite --access public
