@@ -31,6 +31,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Require public source for npm publication
+        if: inputs.publish
+        env:
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          if [ "$REPOSITORY_PRIVATE" != "false" ] || [ "$RELEASE_REF" != "refs/heads/main" ]; then
+            echo "::error::Publish only from main with a public source repository."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v6
 
