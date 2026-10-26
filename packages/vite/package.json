@@ -1,6 +1,6 @@
 {
   "name": "@gamedevland/vite",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Vite build tooling for Gamedev Land HTML5 games.",
   "license": "MIT",
@@ -44,7 +44,7 @@
     "build": "npm run clean && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths"
   },
   "dependencies": {
-    "@gamedevland/engine": "0.0.7",
+    "@gamedevland/engine": "0.0.8",
     "@poki/cli": "0.1.19",
     "fflate": "0.8.3"
   },

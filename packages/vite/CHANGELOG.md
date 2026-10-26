@@ -1,11 +1,15 @@
 # Changelog
 
-## 0.1.1
+## 0.1.2 (unreleased)
 
 - Release the package and its source under MIT.
 - Add public source, issue tracker and package-directory metadata.
-- Depend on the MIT-licensed engine 0.0.7 release.
+- Depend on the MIT-licensed engine 0.0.8 release.
 - Make the README configuration example work in native ESM.
+
+## 0.1.1 (withdrawn)
+
+- Publication withdrawn; this version must not be reused.
 
 ## 0.1.0
 
