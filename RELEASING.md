@@ -9,7 +9,7 @@ Validation-only workflow runs remain available.
 
 - `@gamedevland/engine`: 0.0.8 (unreleased).
 - `@gamedevland/vite`: 0.1.2 (unreleased), depending on engine 0.0.8.
-- Engine 0.0.7 and Vite 0.1.1 were withdrawn. Do not reuse these version numbers.
+- Vite 0.1.1 was unpublished. Engine 0.0.7 withdrawal was rejected by npm because the package has registry dependents; that version remains public pending support resolution. Do not reuse either version number.
 
 The release must include only reviewed, committed code. Local uncommitted engine patches are
 not implicitly included in a GitHub Actions release.
