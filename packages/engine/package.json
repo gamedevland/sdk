@@ -3,7 +3,7 @@
   "version": "0.0.7",
   "type": "module",
   "description": "HTML5 game engine SDK for AI-assisted web game development.",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "MIT",
   "author": "Gamedev Land",
   "keywords": [
     "gamedev",
@@ -124,5 +124,14 @@
     "howler": "^2.2.4",
     "matter-js": "^0.20.0",
     "pixi.js": "^8.16.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gamedevland/sdk.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://github.com/gamedevland/sdk/tree/main/packages/engine#readme",
+  "bugs": {
+    "url": "https://github.com/gamedevland/sdk/issues"
   }
 }

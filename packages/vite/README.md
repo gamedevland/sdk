@@ -13,12 +13,13 @@ Vite 7 or 8 must be installed in the game project.
 ## Usage
 
 ```ts
+import { fileURLToPath } from 'node:url';
 import { createGameViteConfig } from '@gamedevland/vite';
 
 export default ({ mode }: { readonly mode: string }) =>
   createGameViteConfig({
     mode,
-    repoRoot: __dirname,
+    repoRoot: fileURLToPath(new URL('.', import.meta.url)),
   });
 ```
 
@@ -87,4 +88,6 @@ See the [official Poki CLI](https://github.com/poki/poki-cli). The browser runti
 
 ## License
 
-This package is public but not open source. See [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE). Source code and contributions: [gamedevland/sdk](https://github.com/gamedevland/sdk).
+
+Earlier npm releases retain the license included in their respective archives. Third-party dependencies retain their own licenses.

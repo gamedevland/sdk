@@ -1,6 +1,6 @@
 # @gamedevland/engine
 
-Compiled HTML5 game engine SDK for Gamedev Land projects.
+Open-source TypeScript HTML5 game engine SDK for Gamedev Land projects.
 
 The npm package intentionally ships a compact public distribution:
 
@@ -8,7 +8,7 @@ The npm package intentionally ships a compact public distribution:
 - `dist/sdk.d.ts` - bundled TypeScript declarations
 - `README.md`, `LICENSE`, and `package.json`
 
-Source files are not included in the published package.
+Source files are available in [the SDK repository](https://github.com/gamedevland/sdk/tree/main/packages/engine/src); the npm archive contains the compiled distribution.
 
 ## Install
 
@@ -83,4 +83,6 @@ type declarations may conflict with newer TypeScript DOM library declarations in
 
 ## License
 
-This package is public but not open source. See [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE). Source code and contributions: [gamedevland/sdk](https://github.com/gamedevland/sdk).
+
+Earlier npm releases retain the license included in their respective archives. Third-party dependencies retain their own licenses.
