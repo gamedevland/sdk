@@ -78,14 +78,18 @@ export class HowlerAudioBackend implements AudioBackend {
 
     const soundId = howl.play();
     const handle = this.createHandle(id);
+    const onFinish = () => this.removeHandle(handle);
     const record: HandleRecord = {
       sourceId: id,
       channel,
-      loop,
       howl,
       soundId,
       requestedVolume,
       requestedRate,
+      onEnd: () => {
+        if (!loop) this.removeHandle(handle);
+      },
+      onFinish,
     };
     this.handles.set(handle, record);
 
@@ -97,14 +101,10 @@ export class HowlerAudioBackend implements AudioBackend {
       howl.seek(options.seekSeconds, soundId);
     }
 
-    howl.once('end', () => {
-      if (record.loop) {
-        return;
-      }
-      this.removeHandle(handle);
-    }, soundId);
-    howl.once('stop', () => this.removeHandle(handle), soundId);
-    howl.once('playerror', () => this.removeHandle(handle), soundId);
+    // Loop boundaries keep the handle active; every terminal path releases all listeners.
+    howl.on('end', record.onEnd, soundId);
+    howl.once('stop', record.onFinish, soundId);
+    howl.once('playerror', record.onFinish, soundId);
 
     return handle;
   }
@@ -122,9 +122,8 @@ export class HowlerAudioBackend implements AudioBackend {
 
   stopAll(channel?: AudioChannel): void {
     if (channel === undefined) {
-      for (const [handle, record] of this.handles) {
-        record.howl.stop(record.soundId);
-        this.handles.delete(handle);
+      for (const handle of this.handles.keys()) {
+        this.stop(handle);
       }
       for (const sourceId of this.musicSourceIds) {
         this.stopMusicSourcePlayback(sourceId);
@@ -136,8 +135,7 @@ export class HowlerAudioBackend implements AudioBackend {
       if (record.channel !== channel) {
         continue;
       }
-      record.howl.stop(record.soundId);
-      this.handles.delete(handle);
+      this.stop(handle);
     }
 
     if (channel === 'music') {
@@ -261,7 +259,12 @@ export class HowlerAudioBackend implements AudioBackend {
   }
 
   private removeHandle(handle: AudioHandle): void {
+    const record = this.handles.get(handle);
+    if (!record) return;
     this.handles.delete(handle);
+    record.howl.off('end', record.onEnd, record.soundId);
+    record.howl.off('stop', record.onFinish, record.soundId);
+    record.howl.off('playerror', record.onFinish, record.soundId);
   }
 
   private stopHandlesForSource(sourceId: AudioId): void {
@@ -269,8 +272,7 @@ export class HowlerAudioBackend implements AudioBackend {
       if (record.sourceId !== sourceId) {
         continue;
       }
-      record.howl.stop(record.soundId);
-      this.handles.delete(handle);
+      this.stop(handle);
     }
   }
 
@@ -284,7 +286,7 @@ export class HowlerAudioBackend implements AudioBackend {
       if (record.sourceId !== sourceId || record.channel !== 'music') {
         continue;
       }
-      this.handles.delete(handle);
+      this.removeHandle(handle);
     }
   }
 
@@ -404,9 +406,10 @@ export class HowlerAudioBackend implements AudioBackend {
 interface HandleRecord {
   sourceId: AudioId;
   channel: AudioChannel;
-  loop: boolean;
   howl: Howl;
   soundId: number;
   requestedVolume: number;
   requestedRate: number;
+  readonly onEnd: () => void;
+  readonly onFinish: () => void;
 }

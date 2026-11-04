@@ -12,7 +12,7 @@ type GameDistributionAdRequestKind = 'commercial' | 'rewarded';
 
 interface PendingGameDistributionAdRequest {
   readonly kind: GameDistributionAdRequestKind;
-  readonly timeoutId: number;
+  timeoutId: number | undefined;
   rewardGranted: boolean;
   settled: boolean;
   readonly resolve: (result: PlatformRewardResult) => void;
@@ -33,6 +33,7 @@ export class GameDistributionPlatformAdapter implements PlatformAdapter {
   readonly id = 'gamedistribution';
 
   private initialized = false;
+  private adPaused = false;
   private disposed = false;
   private runtimeHooks: PlatformRuntimeHooks = GameDistributionPlatformAdapter.EMPTY_RUNTIME_HOOKS;
   private unsubscribeBridge: (() => void) | undefined;
@@ -115,16 +116,17 @@ export class GameDistributionPlatformAdapter implements PlatformAdapter {
 
     return new Promise<PlatformRewardResult>((resolve) => {
       const timeoutId = window.setTimeout(() => {
-        this.finishPendingRequest(false);
+        if (this.pendingRequest === request) this.finishPendingRequest(false);
       }, GameDistributionPlatformAdapter.AD_REQUEST_TIMEOUT_MS);
 
-      this.pendingRequest = {
+      const request: PendingGameDistributionAdRequest = {
         kind,
         timeoutId,
         rewardGranted: false,
         settled: false,
         resolve,
       };
+      this.pendingRequest = request;
 
       let showAdResult: Promise<unknown> | void;
       try {
@@ -137,10 +139,10 @@ export class GameDistributionPlatformAdapter implements PlatformAdapter {
       if (showAdResult instanceof Promise) {
         void showAdResult.then(
           () => {
-            this.finishPendingRequest(this.getPendingRewardSuccess());
+            if (this.pendingRequest === request) this.finishPendingRequest(this.getPendingRewardSuccess());
           },
           () => {
-            this.finishPendingRequest(false);
+            if (this.pendingRequest === request) this.finishPendingRequest(false);
           },
         );
       }
@@ -164,10 +166,23 @@ export class GameDistributionPlatformAdapter implements PlatformAdapter {
     if (!pendingRequest || pendingRequest.settled) {
       return;
     }
-    window.clearTimeout(pendingRequest.timeoutId);
+    this.clearRequestTimeout(pendingRequest);
     pendingRequest.settled = true;
     this.pendingRequest = undefined;
+    this.resumeRuntime();
     pendingRequest.resolve({ success });
+  }
+
+  private clearRequestTimeout(request: PendingGameDistributionAdRequest): void {
+    if (request.timeoutId === undefined) return;
+    window.clearTimeout(request.timeoutId);
+    request.timeoutId = undefined;
+  }
+
+  private resumeRuntime(): void {
+    if (!this.adPaused) return;
+    this.adPaused = false;
+    this.runtimeHooks.onResumeRequested?.();
   }
 
   private readonly handleSdkEvent = (event: GameDistributionSdkEvent): void => {
@@ -177,9 +192,13 @@ export class GameDistributionPlatformAdapter implements PlatformAdapter {
 
     switch (event.name) {
       case GameDistributionPlatformAdapter.SDK_GAME_PAUSE_EVENT:
+        // The watchdog bounds loading only. A legitimate video may exceed fifteen seconds.
+        if (this.pendingRequest) this.clearRequestTimeout(this.pendingRequest);
+        this.adPaused = true;
         this.runtimeHooks.onPauseRequested?.();
         break;
       case GameDistributionPlatformAdapter.SDK_GAME_START_EVENT:
+        this.adPaused = false;
         this.runtimeHooks.onResumeRequested?.();
         this.finishPendingRequest(this.getPendingRewardSuccess());
         break;
@@ -191,6 +210,8 @@ export class GameDistributionPlatformAdapter implements PlatformAdapter {
         break;
       }
       case GameDistributionPlatformAdapter.SDK_ERROR_EVENT:
+      case 'AD_ERROR':
+        this.resumeRuntime();
         this.finishPendingRequest(false);
         break;
       default:

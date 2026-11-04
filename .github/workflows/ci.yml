@@ -20,6 +20,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run typecheck
+      - run: npm run test:resource-cleanup --workspace @gamedevland/engine
       - run: npm test --workspace @gamedevland/vite
       - run: npm pack --dry-run --workspace @gamedevland/engine
       - run: npm pack --dry-run --workspace @gamedevland/vite

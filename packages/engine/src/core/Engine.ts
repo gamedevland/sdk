@@ -303,8 +303,10 @@ export class Engine
       new PersistenceBootstrapBootTask(startConfig.system, this.platform),
     ]).run();
     this.audio.applyBootstrapConfig(startConfig.system?.audio, this.configStore);
-    this.platform.loadingFinished();
     await this.startScene(startConfig.scenes.initial);
+    if (startConfig.system?.boot?.autoLoadingFinished !== false) {
+      this.platform.loadingFinished();
+    }
   }
 
   async bootstrapSceneConfigs(sceneKey: string): Promise<void> {

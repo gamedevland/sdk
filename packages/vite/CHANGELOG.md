@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.2 (unreleased)
+## 0.1.2 — 2026-11-04
 
 - Release the package and its source under MIT.
 - Add public source, issue tracker and package-directory metadata.

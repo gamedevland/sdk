@@ -207,6 +207,12 @@ export class AssetManager {
     await this.loadDescriptors(descriptors);
   }
 
+  /** Loads a bundle and rejects if any required resource failed, including after loader retries. */
+  async loadRequiredBundle(name: string): Promise<void> {
+    await this.loadBundle(name);
+    for (const id of this.getBundleAssetIds(name)) this.getRequired(id);
+  }
+
   /**
    * Core loading routine that resolves descriptors and loads them with bounded concurrency.
    * Uses an internal queue and a dynamic pool of running promises.

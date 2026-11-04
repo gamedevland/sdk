@@ -175,6 +175,7 @@ export class InputManager {
 
   /**
    * Native pointermove handler: updates pointer state and emits dragstart/drag/pointermove depending on thresholds.
+   * Unpressed mouse movement emits hover pointermove without allocating tracked pointer state.
    * Drag recognition starts when movement exceeds `dragStartDistance`.
    */
   private onPointerMove = (ev: PointerEvent): void => {
@@ -183,7 +184,13 @@ export class InputManager {
     if (throttle > 0 && time - this.lastMoveTime < throttle) return;
     this.lastMoveTime = time;
     const st = this.tracker.move(ev.pointerId, ev.clientX, ev.clientY, time);
-    if (!st) return;
+    if (!st) {
+      if (ev.pointerType !== 'mouse' || ev.buttons !== 0) return;
+      const virtual = this.engine.screen.toVirtual(ev.clientX, ev.clientY);
+      const hit = this.hits.hitTest(virtual);
+      this.emit({ ...this.buildPointerBase(ev, time, virtual, hit.target), type: 'pointermove' });
+      return;
+    }
     const hit = this.hits.hitTest({ x: st.virtualX, y: st.virtualY });
     // If not dragging yet but threshold exceeded -> start dragging
     if (!this.drags.isDragging(ev.pointerId) && this.drags.shouldStart(st)) {

@@ -162,6 +162,11 @@ export class ParticlesManager {
     return this.emitters.size;
   }
 
+  /** Whether a handle still belongs to this manager, including after scene subtree cleanup. */
+  hasEmitter(handle: ParticleHandle): boolean {
+    return this.emitters.has(handle);
+  }
+
   tick(dt: number): void {
     if (this.emitters.size === 0) {
       return;

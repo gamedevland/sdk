@@ -92,6 +92,8 @@ export class DisplacementFilterComponent extends BaseTypedComponent<
 
     if (filter !== undefined) {
       this.node.view.filters = this.readCurrentFilters().filter((item) => item !== filter);
+      // Release owned bind groups without destroying shared programs or the asset texture.
+      filter.destroy();
     }
 
     noiseSprite?.removeFromParent();

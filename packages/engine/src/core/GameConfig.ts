@@ -29,6 +29,8 @@ export interface GameConfig {
     };
     /** Deterministic engine boot preload plan for JSON configs. */
     boot?: {
+      /** Defaults to true. Set false for a loading scene; signal platform.loadingFinished() when gameplay is ready. */
+      autoLoadingFinished?: boolean;
       configs?: {
         /** Bundle names preloaded into ConfigStore once at engine start. */
         engineStartBundles?: readonly string[];

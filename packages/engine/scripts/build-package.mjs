@@ -8,6 +8,10 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 await build({
   configFile: false,
   root: packageRoot,
+  // Preserve consumer build defines instead of baking an empty SDK build environment.
+  define: {
+    'import.meta.env.VITE_PLATFORM': 'import.meta.env.VITE_PLATFORM',
+  },
   resolve: {
     alias: [
       { find: /^@engine$/, replacement: resolve(packageRoot, 'src/index.ts') },

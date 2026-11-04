@@ -46,6 +46,32 @@ Layout nodes expose `getLocalBounds()` for renderer-independent local geometry q
 
 ## TypeScript
 
+### Platform packaging and boot (0.0.8)
+
+The packaged runtime preserves `import.meta.env.VITE_PLATFORM` for the consuming
+game's Vite build. Loading completion is reported after the initial scene and its
+assets are ready. Consumers remain responsible for gameplay start/stop signals.
+
+For an initial loading scene, set `system.boot.autoLoadingFinished: false`.
+Call `engine.platform.loadingFinished()` after the gameplay scene and all required
+assets are ready. The default remains automatic completion after the initial scene.
+
+`assets.loadRequiredBundle(name)` loads with the usual cache/retries and rejects
+if any resource remains unavailable. Use it for mandatory loading-screen bundles;
+the existing `loadBundle(name)` behavior is unchanged.
+
+`particles.hasEmitter(handle)` reports whether scene cleanup has already released
+a handle. `ParticleEmitterComponent` tolerates prior subtree cleanup on disable/detach
+and recreates a removed emitter when enabled again; invalid direct manager calls still fail fast.
+
+### Resource cleanup (0.0.8)
+
+Audio handles release their end/stop/playerror subscriptions on every terminal path,
+including explicit stop, channel stop, source unload and disposal. Loop boundaries
+and pause keep subscriptions until playback actually terminates.
+Displacement components destroy their owned filters on disable/detach while keeping
+asset-owned textures and shared shader programs alive. No consumer API changes are required.
+
 ### Runtime activity and pointer metadata (0.0.6)
 
 Version 0.0.7 makes spawned prefab disposal idempotent and removes the logical

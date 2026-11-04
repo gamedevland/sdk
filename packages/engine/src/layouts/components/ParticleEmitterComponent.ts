@@ -31,7 +31,7 @@ export class ParticleEmitterComponent extends BaseTypedComponent<ParticleEmitter
   private emitterHandle: ParticleHandle | undefined;
 
   protected override onEnable(): void {
-    if (this.emitterHandle === undefined) {
+    if (this.emitterHandle === undefined || !this.node.engine.particles.hasEmitter(this.emitterHandle)) {
       const preset = this.toPreset(this.config.preset, 'ParticleEmitterComponent.config.preset');
       this.emitterHandle = this.node.engine.particles.createEmitter({
         preset,
@@ -48,7 +48,7 @@ export class ParticleEmitterComponent extends BaseTypedComponent<ParticleEmitter
 
   protected override onDisable(): void {
     const handle = this.emitterHandle;
-    if (handle === undefined) {
+    if (handle === undefined || !this.node.engine.particles.hasEmitter(handle)) {
       return;
     }
     this.node.engine.particles.stop(handle);
@@ -58,7 +58,7 @@ export class ParticleEmitterComponent extends BaseTypedComponent<ParticleEmitter
     const handle = this.emitterHandle;
     this.emitterHandle = undefined;
 
-    if (handle !== undefined) {
+    if (handle !== undefined && this.node.engine.particles.hasEmitter(handle)) {
       this.node.engine.particles.destroy(handle);
     }
 
