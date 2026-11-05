@@ -10,6 +10,12 @@ The npm package intentionally ships a compact public distribution:
 
 Source files are available in [the SDK repository](https://github.com/gamedevland/sdk/tree/main/packages/engine/src); the npm archive contains the compiled distribution.
 
+## Changelog
+
+**0.0.9** adds opt-in viewport-native rendering and a configurable canvas pixel
+budget. Existing DPR defaults stay the same.
+[Full engine changelog](https://github.com/gamedevland/sdk/blob/main/packages/engine/CHANGELOG.md).
+
 ## Install
 
 ```bash
@@ -43,6 +49,20 @@ For `dragend` input events, `InputEventBase.dragEndReason` distinguishes a norma
 (`pointerup`) from a system cancellation (`pointercancel`).
 
 Layout nodes expose `getLocalBounds()` for renderer-independent local geometry queries.
+
+## Screen resolution
+
+Logical landscape and portrait profiles define the game's coordinate system.
+Set `system.screen.dpr: 'native'` to scale the backing canvas to the physical
+pixels of the viewport, including when the game is embedded in an iframe.
+For this mode, `maxDpr` caps the display density relative to CSS pixels.
+Existing numeric `dpr` values and `'auto'` still multiply the logical canvas size.
+
+Set `system.screen.render.maxCanvasPixels` to a positive integer to limit the
+backing canvas area. The engine scales both axes together and preserves the
+logical layout and pointer coordinates. Extremely small budgets may be exceeded
+when required to keep both axes at least one pixel. This option caps the main
+canvas independently of the optional `render.scaleFactor` pass.
 
 ## TypeScript
 

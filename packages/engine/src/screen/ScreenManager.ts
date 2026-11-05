@@ -28,6 +28,10 @@ export class ScreenManager {
     private readonly app: Application,
     private readonly config: ScreenConfig,
   ) {
+    const maxCanvasPixels = config.render?.maxCanvasPixels;
+    if (maxCanvasPixels !== undefined && (!Number.isSafeInteger(maxCanvasPixels) || maxCanvasPixels < 1)) {
+      throw new RangeError('ScreenManager: render.maxCanvasPixels must be a positive safe integer');
+    }
     this.scaler = new Scaler(config);
   }
 
@@ -62,10 +66,11 @@ export class ScreenManager {
   }
 
   private applySnapshot(next: ScreenStateSnapshot): void {
-    const changed = this.hasChanged(this.prev, next);
+    const resolution = this.resolveResolution(next);
+    const changed = this.hasChanged(this.prev, next) || this.app.renderer.resolution !== resolution;
     this.snapshot = next;
     if (changed) {
-      this.applyToStage();
+      this.applyToStage(resolution);
       this.prev = { ...next };
       this.notifyChange();
     }
@@ -73,18 +78,13 @@ export class ScreenManager {
 
   /**
    * Applies the current snapshot to the PIXI renderer and stage:
-   * - Sets device pixel ratio (renderer.resolution)
-   * - Resizes the internal canvas to the computed virtual size
+   * - Resizes the renderer using the virtual size and backing canvas resolution
    * - Does NOT scale the stage: scaling is expected to be done via CSS size of the canvas
    */
-  private applyToStage(): void {
+  private applyToStage(resolution: number): void {
     const { canvas, viewport } = this.snapshot;
-    const dpr = this.resolveDpr();
-    // IMPORTANT: internal canvas size equals the computed virtual canvas.
-    // resize(width,height) sets the <canvas width/height> attributes.
-    this.app.renderer.resolution = dpr;
-    this.app.renderer.resize(canvas.width, canvas.height);
-    // Ensure the canvas DOM size matches the viewport; Renderer will draw into virtual size.
+    this.app.renderer.resize(canvas.width, canvas.height, resolution);
+    // The displayed size is independent of the backing canvas resolution.
     const cv = this.app.canvas as HTMLCanvasElement;
     if (cv && cv.style) {
       cv.style.width = `${viewport.width}px`;
@@ -123,26 +123,37 @@ export class ScreenManager {
       }
   }
 
-  /**
-   * Resolves the device pixel ratio to use for the renderer's resolution.
-   * - `dpr: 'auto'` uses the browser DPR (retina-aware).
-   * - numeric `dpr` uses the provided fixed value.
-   * - missing/invalid values fall back to 1.
-   */
-  private resolveDpr(): number {
-    if (this.config.dpr === 'auto') {
+  private resolveResolution(snapshot: ScreenStateSnapshot): number {
+    const dpr = this.config.dpr;
+    let resolution = this.resolveDpr(dpr);
+    if (dpr === 'native') resolution *= snapshot.scale;
+
+    const budget = this.config.render?.maxCanvasPixels;
+    if (budget === undefined) return resolution;
+
+    const { width, height } = snapshot.canvas;
+    if (Math.round(width * resolution) * Math.round(height * resolution) <= budget) return resolution;
+
+    const halfPixel = .5 / Math.min(width, height);
+    // Keep the shorter axis at one pixel even for unusually small budgets.
+    const minimum = halfPixel * (1 + Number.EPSILON);
+    const limit = Math.max(minimum, Math.min(resolution, Math.sqrt(budget / (width * height))));
+    if (Math.round(width * limit) * Math.round(height * limit) <= budget) return limit;
+
+    // Pixi rounds each axis. Leave room for that rounding when it exceeds the budget.
+    return Math.max(minimum, limit - halfPixel);
+  }
+
+  private resolveDpr(dpr: ScreenConfig['dpr']): number {
+    if (dpr === 'auto' || dpr === 'native') {
       const rawDpr = window.devicePixelRatio;
-      if (typeof rawDpr !== 'number' || !Number.isFinite(rawDpr) || rawDpr <= 0) return 1;
+      if (!Number.isFinite(rawDpr) || rawDpr <= 0) return 1;
       const maxDpr = this.config.maxDpr;
-      if (typeof maxDpr === 'number' && Number.isFinite(maxDpr) && maxDpr > 0) {
-        return Math.min(rawDpr, maxDpr);
-      }
-      return rawDpr;
+      return typeof maxDpr === 'number' && Number.isFinite(maxDpr) && maxDpr > 0
+        ? Math.min(rawDpr, maxDpr)
+        : rawDpr;
     }
-    if (typeof this.config.dpr === 'number' && Number.isFinite(this.config.dpr) && this.config.dpr > 0) {
-      return this.config.dpr;
-    }
-    return 1;
+    return typeof dpr === 'number' && Number.isFinite(dpr) && dpr > 0 ? dpr : 1;
   }
 
   /**

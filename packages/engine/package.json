@@ -1,6 +1,6 @@
 {
   "name": "@gamedevland/engine",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "type": "module",
   "description": "HTML5 game engine SDK for AI-assisted web game development.",
   "license": "MIT",
@@ -115,6 +115,7 @@
     }
   },
   "scripts": {
+    "test:screen": "node scripts/verify-screen.mjs",
     "test:resource-cleanup": "node scripts/verify-resource-cleanup.mjs",
     "clean": "rimraf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit",

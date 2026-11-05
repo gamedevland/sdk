@@ -19,3 +19,19 @@
 - Use the official pinned Poki CLI, per-game private credentials or `POKI_UPLOAD_TOKEN`, and verified upload receipts.
 - Keep authentication out of check/build subprocesses and reject source maps, private files, symlinks and leaked upload tokens in build output.
 - Preserve existing Vite configuration exports and browser SDK injection.
+
+## 0.0.4
+
+- Update the engine dependency to 0.0.5.
+
+## 0.0.3
+
+- Update package links and the engine dependency to 0.0.4.
+
+## 0.0.2
+
+- Update repository metadata and the engine dependency to 0.0.3.
+
+## 0.0.1
+
+- First npm release of the Vite tooling.

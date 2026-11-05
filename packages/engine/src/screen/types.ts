@@ -21,17 +21,21 @@ export interface ScreenProfile {
 
 export interface ScreenRenderConfig {
   scaleFactor?: number;
+  /** Maximum backing canvas area in physical pixels. Independent of scaleFactor. */
+  maxCanvasPixels?: number;
 }
 
 /**
  * Main configuration for screen behavior.
  * - `land`/`port`: virtual profiles for each orientation.
- * - `dpr`: renderer resolution; 'auto' or a fixed number. Default is 1.
+ * - `dpr`: fixed renderer resolution, 'auto' for browser DPR in virtual units,
+ *   or 'native' to target physical viewport pixels. Default is 1.
+ * - `maxDpr`: caps the browser DPR in 'auto' and 'native' modes.
  */
 export interface ScreenConfig {
   land: ScreenProfile;
   port: ScreenProfile;
-  dpr?: 'auto' | number;
+  dpr?: 'auto' | 'native' | number;
   maxDpr?: number;
   render?: ScreenRenderConfig;
 }
@@ -54,7 +58,7 @@ export interface VirtualSize {
 export interface ScreenStateSnapshot {
   orientation: Orientation;
   viewport: ViewportSize;
-  /** Internal canvas size (the <canvas width/height> attributes), px. */
+  /** Logical canvas size, before renderer resolution is applied. */
   canvas: { width: number; height: number };
   /** Uniform CSS-like scale applied to the stage to fill the viewport. */
   scale: number;

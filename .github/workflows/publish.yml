@@ -70,6 +70,9 @@ jobs:
       - name: Test engine resource cleanup
         run: npm run test:resource-cleanup --workspace @gamedevland/engine
 
+      - name: Test screen resolution
+        run: npm run test:screen --workspace @gamedevland/engine
+
       - name: Test shared tooling
         run: npm test --workspace @gamedevland/vite
 

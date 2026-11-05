@@ -14,6 +14,28 @@ commands execute use cases, scene services own runtime state, and components/act
 JSON layouts and prefabs describe the visual hierarchy. Public subsystem entry points support imports
 such as `@gamedevland/engine/assets` and `@gamedevland/engine/scenes`.
 
+## Changelog
+
+| Package | Version | Summary |
+| --- | --- | --- |
+| Engine | [0.0.9](packages/engine/CHANGELOG.md#009--2026-11-05) | Add opt-in viewport-native rendering and a canvas pixel budget. Existing DPR defaults stay the same. |
+| Engine | [0.0.8](packages/engine/CHANGELOG.md#008--2026-11-04) | Publish under MIT and improve startup, input, and resource cleanup. |
+| Engine | [0.0.7](packages/engine/CHANGELOG.md#007) | Add runtime activity and pointer metadata, and make prefab cleanup idempotent. |
+| Engine | [0.0.5](packages/engine/CHANGELOG.md#005) | Prepare automated npm publishing. |
+| Engine | [0.0.4](packages/engine/CHANGELOG.md#004) | Update package links. |
+| Engine | [0.0.3](packages/engine/CHANGELOG.md#003) | Update repository metadata. |
+| Engine | [0.0.2](packages/engine/CHANGELOG.md#002) | Add drag-end reasons and local node bounds. |
+| Vite | [0.1.2](packages/vite/CHANGELOG.md#012--2026-11-04) | Publish under MIT with public source links and a native ESM configuration example. |
+| Vite | [0.1.1](packages/vite/CHANGELOG.md#011-withdrawn) | Withdrawn from npm. |
+| Vite | [0.1.0](packages/vite/CHANGELOG.md#010) | Add the Poki packaging and upload CLI. |
+| Vite | [0.0.4](packages/vite/CHANGELOG.md#004) | Update the engine dependency to 0.0.5. |
+| Vite | [0.0.3](packages/vite/CHANGELOG.md#003) | Update package links and the engine dependency. |
+| Vite | [0.0.2](packages/vite/CHANGELOG.md#002) | Update repository metadata and the engine dependency. |
+| Vite | [0.0.1](packages/vite/CHANGELOG.md#001) | First npm release of the Vite tooling. |
+
+See the full [engine changelog](packages/engine/CHANGELOG.md),
+[Vite changelog](packages/vite/CHANGELOG.md), and [GitHub releases](https://github.com/gamedevland/sdk/releases).
+
 ## Install
 
 Use Node.js 22.12+ or 24 and npm. Game projects use Vite 7 or 8 and modern ESM/TypeScript tooling.
