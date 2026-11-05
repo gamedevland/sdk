@@ -2,6 +2,8 @@
 
 Open-source TypeScript tools for building HTML5 games with PixiJS and Vite.
 
+Read the [GameDevLand SDK documentation](https://gamedev.land/academy/sdk/).
+
 | Package | Purpose | Documentation |
 | --- | --- | --- |
 | [`@gamedevland/engine`](https://www.npmjs.com/package/@gamedevland/engine) | Game runtime: scenes, assets, layouts, input, DI, FSM, audio, physics, particles and platform integration | [Engine README](packages/engine/README.md) |
