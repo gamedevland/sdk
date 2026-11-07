@@ -37,6 +37,7 @@ export class EngineErrorFormatter {
     [EngineErrorCode.AudioInvalidArgument]: 'invalid argument',
     [EngineErrorCode.AudioInvalidConfig]: 'invalid configuration',
     [EngineErrorCode.AudioConflict]: 'invalid runtime state',
+    [EngineErrorCode.AudioPlaybackBlocked]: 'browser playback policy',
     [EngineErrorCode.ParticleMissingRequired]: 'required resource is missing',
     [EngineErrorCode.ParticleInvalidArgument]: 'invalid argument',
     [EngineErrorCode.ParticleInvalidConfig]: 'invalid configuration',

@@ -1,3 +1,5 @@
+import type { SupportedLocaleCode } from './LocaleCatalog';
+
 /**
  * Text style config types commonly used across games.
  * Part of engine configs module; domain-agnostic.
@@ -25,7 +27,7 @@ export interface TextStyleDef {
   readonly dropShadow?: TextStyleDropShadowDef;
   readonly wordWrap?: boolean;
   readonly wordWrapWidth?: number;
-  readonly byLocale?: Readonly<Record<'en' | 'ru', TextStyleDef>>;
+  readonly byLocale?: Readonly<Partial<Record<SupportedLocaleCode, TextStyleDef>>>;
 }
 
 /** Map of style name to definition. */

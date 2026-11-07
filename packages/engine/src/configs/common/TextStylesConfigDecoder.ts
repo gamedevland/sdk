@@ -110,8 +110,8 @@ export class TextStylesConfigDecoder {
 
   private static normalizeLocalizedStyles(
     localizedStyles: Readonly<Record<string, unknown>>,
-  ): Readonly<Record<SupportedLocaleCode, TextStyleDef>> {
-    const normalized = {} as Record<SupportedLocaleCode, TextStyleDef>;
+  ): Readonly<Partial<Record<SupportedLocaleCode, TextStyleDef>>> {
+    const normalized: Partial<Record<SupportedLocaleCode, TextStyleDef>> = {};
     for (const [locale, styleUnknown] of Object.entries(localizedStyles)) {
       if (!LocaleCatalog.isSupported(locale)) {
         throw EngineErrorFactory.invalidInput({

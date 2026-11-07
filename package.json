@@ -7,6 +7,8 @@
     "packages/*"
   ],
   "scripts": {
+    "test:locales": "node scripts/verify-locales.mjs",
+    "test:audio": "node scripts/verify-audio-activation.mjs && node scripts/verify-music-single-instance.mjs",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present"

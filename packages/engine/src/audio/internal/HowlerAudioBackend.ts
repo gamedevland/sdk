@@ -31,10 +31,10 @@ export class HowlerAudioBackend implements AudioBackend {
     ['sfx', false],
   ]);
   private readonly musicSourceIds = new Set<AudioId>();
-  private readonly sourcesById = new Map<AudioId, Howl>();
+  private readonly sourcesById = new Map<AudioId, SourceRecord>();
   private readonly handles = new Map<AudioHandle, HandleRecord>();
   private handleCounter = 0;
-  private unlockPromise: Promise<void> | undefined;
+  private disposed = false;
 
   createSource(source: AudioSourceDescriptor): void {
     if (this.sourcesById.has(source.id)) {
@@ -45,11 +45,7 @@ export class HowlerAudioBackend implements AudioBackend {
         details: { id: source.id, method: 'HowlerAudioBackend.createSource' },
       });
     }
-    const howl = new Howl({
-      src: [source.url],
-      preload: true,
-    });
-    this.sourcesById.set(source.id, howl);
+    this.sourcesById.set(source.id, { descriptor: { ...source }, howl: this.createSourceHowl(source) });
   }
 
   hasSource(id: AudioId): boolean {
@@ -58,6 +54,15 @@ export class HowlerAudioBackend implements AudioBackend {
 
   isHandleActive(handle: AudioHandle): boolean {
     return this.handles.has(handle);
+  }
+
+  isHandlePlaying(handle: AudioHandle): boolean {
+    const record = this.handles.get(handle);
+    return record !== undefined && record.started && !record.blocked && record.howl.playing(record.soundId);
+  }
+
+  isPlaybackReady(): boolean {
+    return !Howler.noAudio && (!Howler.usingWebAudio || Howler.ctx?.state === 'running');
   }
 
   play(id: AudioId, options?: PlayAudioOptions): AudioHandle {
@@ -72,8 +77,11 @@ export class HowlerAudioBackend implements AudioBackend {
     this.assertOptionalSeek(options?.seekSeconds, 'HowlerAudioBackend.play');
 
     if (channel === 'music') {
+      for (const [handle, record] of this.handles) {
+        if (record.channel === 'music' && record.sourceId === id) return handle;
+      }
+      this.stopAll('music');
       this.musicSourceIds.add(id);
-      this.stopMusicSourcePlayback(id);
     }
 
     const soundId = howl.play();
@@ -86,10 +94,27 @@ export class HowlerAudioBackend implements AudioBackend {
       soundId,
       requestedVolume,
       requestedRate,
+      started: false,
+      blocked: false,
+      paused: false,
       onEnd: () => {
         if (!loop) this.removeHandle(handle);
       },
       onFinish,
+      onPlay: () => { record.started = true; record.blocked = false; },
+      onPlayError: () => {
+        if (!this.handles.has(handle)) return;
+        if (channel === 'music') {
+          record.blocked = true;
+          howl.off('unlock', record.onUnlock);
+          howl.once('unlock', record.onUnlock);
+        } else {
+          this.removeHandle(handle);
+          howl.stop(soundId);
+        }
+      },
+      onUnlock: () => this.retryMusicRecord(handle, record),
+      onLoadError: () => this.removeHandle(handle),
     };
     this.handles.set(handle, record);
 
@@ -104,18 +129,30 @@ export class HowlerAudioBackend implements AudioBackend {
     // Loop boundaries keep the handle active; every terminal path releases all listeners.
     howl.on('end', record.onEnd, soundId);
     howl.once('stop', record.onFinish, soundId);
-    howl.once('playerror', record.onFinish, soundId);
+    howl.on('play', record.onPlay, soundId);
+    howl.on('playerror', record.onPlayError, soundId);
+    howl.once('loaderror', record.onLoadError);
 
     return handle;
   }
 
   pause(handle: AudioHandle): void {
     const record = this.getRequiredHandle(handle, 'HowlerAudioBackend.pause');
+    record.paused = true;
     record.howl.pause(record.soundId);
   }
 
   stop(handle: AudioHandle): void {
     const record = this.getRequiredHandle(handle, 'HowlerAudioBackend.stop');
+    if (record.channel === 'music' && record.howl.state() !== 'loaded') {
+      // Cancel the old Howler queue entirely. A queued stop can otherwise fire
+      // against a reused sound id belonging to a later request after decoding.
+      this.removeHandle(handle);
+      record.howl.unload();
+      const source = this.sourcesById.get(record.sourceId);
+      if (source && !this.disposed) source.howl = this.createSourceHowl(source.descriptor);
+      return;
+    }
     record.howl.stop(record.soundId);
     this.removeHandle(handle);
   }
@@ -182,26 +219,27 @@ export class HowlerAudioBackend implements AudioBackend {
       this.globalMuted = muted;
       Howler.mute(muted);
       this.syncAllHandles();
+      if (!muted) this.retryPendingMusic();
       return;
     }
     this.channelMuted.set(channel, muted);
     this.syncChannelHandles(channel);
+    if (!muted && channel === 'music') this.retryPendingMusic();
   }
 
   async unlock(): Promise<void> {
-    if (this.unlockPromise) {
-      return await this.unlockPromise;
-    }
-    this.unlockPromise = this.resumeAudioContextIfNeeded().finally(() => {
-      this.unlockPromise = undefined;
-    });
-    return await this.unlockPromise;
+    if (this.disposed) return;
+    // Never reuse a suspended autoplay promise: each gesture must call resume()
+    // on its own stack. HTML media retries also run before the first await.
+    const resumed = this.resumeAudioContextIfNeeded();
+    this.retryPendingMusic();
+    await resumed;
+    if (!this.disposed) this.retryPendingMusic();
   }
 
   unloadSource(id: AudioId): void {
-    const howl = this.getRequiredSource(id);
     this.stopHandlesForSource(id);
-    howl.unload();
+    this.getRequiredSource(id).unload();
     this.sourcesById.delete(id);
     this.musicSourceIds.delete(id);
   }
@@ -217,14 +255,15 @@ export class HowlerAudioBackend implements AudioBackend {
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
     this.stopAll();
-    for (const howl of this.sourcesById.values()) {
-      howl.unload();
+    for (const source of this.sourcesById.values()) {
+      source.howl.unload();
     }
     this.sourcesById.clear();
     this.musicSourceIds.clear();
     this.handles.clear();
-    this.unlockPromise = undefined;
   }
 
   private createHandle(id: AudioId): AudioHandle {
@@ -233,9 +272,9 @@ export class HowlerAudioBackend implements AudioBackend {
   }
 
   private getRequiredSource(id: AudioId): Howl {
-    const howl = this.sourcesById.get(id);
-    if (howl) {
-      return howl;
+    const source = this.sourcesById.get(id);
+    if (source) {
+      return source.howl;
     }
     throw EngineErrorFactory.missingRequired({
       code: EngineErrorCode.AudioMissingRequired,
@@ -264,7 +303,22 @@ export class HowlerAudioBackend implements AudioBackend {
     this.handles.delete(handle);
     record.howl.off('end', record.onEnd, record.soundId);
     record.howl.off('stop', record.onFinish, record.soundId);
-    record.howl.off('playerror', record.onFinish, record.soundId);
+    record.howl.off('play', record.onPlay, record.soundId);
+    record.howl.off('playerror', record.onPlayError, record.soundId);
+    record.howl.off('unlock', record.onUnlock);
+    record.howl.off('loaderror', record.onLoadError);
+  }
+
+  private retryPendingMusic(): void {
+    for (const [handle, record] of this.handles) this.retryMusicRecord(handle, record);
+  }
+
+  private retryMusicRecord(handle: AudioHandle, record: HandleRecord): void {
+    if (this.disposed || !this.handles.has(handle) || record.channel !== 'music' || record.paused
+      || this.isHandleMuted(record) || !this.isPlaybackReady() || record.howl.state() !== 'loaded'
+      || record.started && !record.blocked || record.howl.playing(record.soundId)) return;
+    // Reuse the same sound id, so repeated gestures cannot layer music instances.
+    record.howl.play(record.soundId);
   }
 
   private stopHandlesForSource(sourceId: AudioId): void {
@@ -277,11 +331,14 @@ export class HowlerAudioBackend implements AudioBackend {
   }
 
   private stopMusicSourcePlayback(sourceId: AudioId): void {
-    const howl = this.sourcesById.get(sourceId);
-    if (!howl) {
+    const source = this.sourcesById.get(sourceId);
+    if (!source) {
       return;
     }
-    howl.stop();
+    const howl = source.howl;
+    // Only loaded sources can contain orphaned playback. Pending music is
+    // cancelled by replacing its source in stop(), never by queuing a global stop.
+    if (howl.state() === 'loaded') howl.stop();
     for (const [handle, record] of this.handles) {
       if (record.sourceId !== sourceId || record.channel !== 'music') {
         continue;
@@ -293,6 +350,10 @@ export class HowlerAudioBackend implements AudioBackend {
   private resolveEffectiveVolume(record: HandleRecord): number {
     const channelVolume = this.getRequiredChannelVolume(record.channel);
     return record.requestedVolume * channelVolume * this.masterVolume;
+  }
+
+  private createSourceHowl(source: AudioSourceDescriptor): Howl {
+    return new Howl({ src: [source.url], preload: true });
   }
 
   private isHandleMuted(record: HandleRecord): boolean {
@@ -393,6 +454,15 @@ export class HowlerAudioBackend implements AudioBackend {
   }
 
   private async resumeAudioContextIfNeeded(): Promise<void> {
+    // Initialize the context through Howler's public API, including a first
+    // gesture that arrives before any audio asset has been registered.
+    Howler.volume();
+    if (Howler.noAudio) {
+      throw EngineErrorFactory.create({
+        code: EngineErrorCode.AudioPlaybackBlocked, subsystem: EngineSubsystem.Audio,
+        message: 'Browser audio is unavailable', details: { method: 'HowlerAudioBackend.unlock' },
+      });
+    }
     if (!Howler.usingWebAudio) {
       return;
     }
@@ -400,7 +470,19 @@ export class HowlerAudioBackend implements AudioBackend {
       return;
     }
     await Howler.ctx.resume();
+    if (!this.isPlaybackReady()) {
+      throw EngineErrorFactory.create({
+        code: EngineErrorCode.AudioPlaybackBlocked, subsystem: EngineSubsystem.Audio,
+        message: 'Browser audio context is not running',
+        details: { state: Howler.ctx.state, method: 'HowlerAudioBackend.unlock' },
+      });
+    }
   }
+}
+
+interface SourceRecord {
+  readonly descriptor: AudioSourceDescriptor;
+  howl: Howl;
 }
 
 interface HandleRecord {
@@ -410,6 +492,13 @@ interface HandleRecord {
   soundId: number;
   requestedVolume: number;
   requestedRate: number;
+  started: boolean;
+  blocked: boolean;
+  paused: boolean;
   readonly onEnd: () => void;
   readonly onFinish: () => void;
+  readonly onPlay: () => void;
+  readonly onPlayError: () => void;
+  readonly onUnlock: () => void;
+  readonly onLoadError: () => void;
 }

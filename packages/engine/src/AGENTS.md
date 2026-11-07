@@ -78,6 +78,15 @@ Rules for implementing and evolving `sdk/packages/engine/src/**`.
 - EventBus emit path must remain safe; handlers should not break emitters.
 - Tween cleanup must follow owner lifecycle and must not rely on global best-effort cancellation.
 
+## Audio Contracts
+
+- Keep authored music/SFX volumes in consumer JSON configs, including `channel.music`, `channel.sfx`, and per-asset levels. Preserve `system.audio.volumeConfigId` and shared schema validation; consumers must not duplicate these values in playback code.
+- Attempt requested music automatically. Preserve pending music across browser autoplay rejection and scene transitions, and retry from the first trusted native interaction on the engine canvas.
+- Attach activation capture before scene input starts. Call context resume and HTML media recovery synchronously on the trusted event stack, before awaiting.
+- Never let a pending automatic resume promise suppress a later user-gesture retry. Verify actual AudioContext state and playback outcomes; a returned handle is not proof of playback.
+- Respect player/channel mute and platform/background gates, discard stale blocked one-shot SFX, prevent duplicate music instances, and remove recovery listeners on audio disposal.
+- Verify running/suspended/rejected/pending contexts, Web Audio and HTML media errors, early boot interaction, stop/dispose races, and user mute preferences when changing this subsystem.
+
 ## Type Safety and OOP
 
 - Use strict TypeScript.

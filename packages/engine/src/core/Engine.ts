@@ -262,6 +262,7 @@ export class Engine
     this.app.ticker.remove(this.app.render, this.app);
     this.app.ticker.start();
     await this.platform.init();
+    this.audio.attachInteractionTarget(this.app.canvas);
     this.input.attach(this.app.canvas);
     this.browserInputGuard.attach(this.app.canvas);
     this.eventBridge.attach();
