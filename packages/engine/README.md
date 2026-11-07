@@ -12,8 +12,10 @@ Source files are available in [the SDK repository](https://github.com/gamedevlan
 
 ## Changelog
 
-**0.0.9** adds opt-in viewport-native rendering and a configurable canvas pixel
-budget. Existing DPR defaults stay the same.
+**0.0.10** adds configurable language preferences, observable locale changes,
+measured text fitting, automatic audio activation recovery, and music deduplication
+across loading, user gestures, and scene changes. The default locale subset and
+existing custom audio backends remain compatible.
 [Full engine changelog](https://github.com/gamedevland/sdk/blob/main/packages/engine/CHANGELOG.md).
 
 ## Install
@@ -132,3 +134,70 @@ type declarations may conflict with newer TypeScript DOM library declarations in
 MIT. See [LICENSE](./LICENSE). Source code and contributions: [gamedevland/sdk](https://github.com/gamedevland/sdk).
 
 Earlier npm releases retain the license included in their respective archives. Third-party dependencies retain their own licenses.
+
+## Language preferences
+
+`LocaleCatalog` recognizes `en`, `ru`, `es`, `pt-BR`, `de`, `fr`, `it`, `tr`,
+`zh-CN`, `ja`, and `ko`, including regional browser codes. Games opt into their
+own subset with `LocalesService.initialize({ supportedLocales, defaultLocale,
+deviceLocale, storageKey })`. Existing games retain their English/Russian subset.
+The priority is a saved manual choice, a device/platform hint, browser language
+preferences, then the configured default. Initialization never persists an
+automatic choice. `setLang()` persists manual choices, including selection of the
+current language; unavailable browser storage does not prevent play. Dictionaries
+must already be present in ConfigStore. `getRevision()` and `subscribe()` support
+live UI updates; `subscribe()` returns an unsubscribe function. Text-style locale
+overrides accept partial maps of supported languages.
+
+`Text.fitTo(width, height?)` shrinks the current font to fit measured local bounds
+without changing node transforms. Set the desired font, wrapping and content
+before fitting; invoke it again after a language/content change.
+
+### Autoplay and first-interaction recovery
+
+Request music normally with `audio.playMusic(id)` when assets and player preferences
+are ready. Do not wait for a scene-specific tap. Engine initialization attaches
+native capture listeners to its canvas before scene input is routed. The audio
+manager attempts Web Audio context resume automatically; a rejected or pending
+attempt is retained for the first trusted pointer/touch interaction or keyboard
+interaction while game/body has focus. Gesture retries call `resume()` before any
+await, independently of any pending automatic attempt. Synthetic events, secondary
+pointers/buttons, repeated/modifier key input, and hidden documents do not activate
+recovery. Listeners belong to `AudioManager` and are removed by `audio.dispose()`.
+
+The Howler backend checks the actual context state. HTML media `playerror` preserves
+requested music and retries its existing sound id from native activation or Howler's
+`unlock` event. Repeated taps cannot create layered music. `isMusicPlaying()` reports
+confirmed playback rather than a queued handle. Stale blocked one-shot SFX are
+suppressed/dropped, not replayed after unlock. User/channel disabled flags, manual
+pause/stop, and platform/background mute remain authoritative.
+
+`AudioBackend` optionally exposes `isHandlePlaying(handle)` and `isPlaybackReady()`
+for precise state and one-shot suppression; existing custom backends remain compatible.
+The default backend implements both. `AudioManager.attachInteractionTarget(element)`
+is idempotent and is called by Engine; standalone AudioManager hosts should attach
+it to their own game canvas and dispose the manager on teardown.
+
+All authored levels belong in a manually editable JSON file selected by
+`system.audio.volumeConfigId`, including `channel.music`, `channel.sfx`, and per-asset
+levels. The SDK validates finite values in `[0, 1]` and rejects unknown channel keys.
+Do not duplicate these values in consumer playback calls. Per-play volume options
+remain available for deliberate runtime envelopes/custom backend integrations.
+
+Run `node scripts/verify-audio-activation.mjs` from the SDK workspace to exercise the
+real audio classes with simulated browser contexts/media events. These are deterministic
+unit checks; they do not replace Safari/iOS/Android and embedded-portal device checks.
+
+### Music request idempotency
+
+Repeated `playMusic()` requests for the same active or loading track preserve its
+handle and seek position. The backend independently deduplicates pending/playing
+music and limits its music channel to one source. Music is engine-scoped and does
+not restart when changing scenes. Source-wide stops must not be queued ahead of
+an undecoded play: Howler can reuse a sound id and later stop the newer request.
+Cancelling undecoded music unloads the old Howl queue and recreates a clean source.
+
+Run `node scripts/verify-music-single-instance.mjs` to check the actual bundled
+Howler queue/events against a simulated HTML media device, including cold load,
+boot/main duplicates, unlock races, preserved seek, mute/unmute during decoding,
+and cancellation. This supplements `verify-audio-activation.mjs`.

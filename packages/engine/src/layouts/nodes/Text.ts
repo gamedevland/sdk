@@ -45,6 +45,37 @@ export class Text extends NodeBase implements TextNode {
     return this;
   }
 
+  /** Shrink the current font to fit local bounds, preserving node transforms. */
+  fitTo(width: number, height?: number): this {
+    if (!Number.isFinite(width) || width <= 0 || (height !== undefined && (!Number.isFinite(height) || height <= 0))) {
+      throw EngineErrorFactory.invalidInput({
+        code: EngineErrorCode.LayoutInvalidConfig, subsystem: EngineSubsystem.Layout,
+        message: 'Text fitting bounds must be positive', details: { method: 'Text.fitTo', width, height },
+      });
+    }
+    if (this.view.text.length === 0) return this;
+    const initialSize = this.view.style.fontSize;
+    const initialLineHeight = this.view.style.lineHeight;
+    const bounds = this.view.getLocalBounds();
+    if (bounds.width <= width && (height === undefined || bounds.height <= height)) return this;
+    let low = 1;
+    let high = Math.floor(initialSize * 10);
+    let best = low;
+    while (low <= high) {
+      const candidate = Math.floor((low + high) / 2);
+      this.view.style.fontSize = candidate / 10;
+      if (initialLineHeight > 0) this.view.style.lineHeight = initialLineHeight * candidate / (initialSize * 10);
+      const measured = this.view.getLocalBounds();
+      if (measured.width <= width && (height === undefined || measured.height <= height)) {
+        best = candidate;
+        low = candidate + 1;
+      } else high = candidate - 1;
+    }
+    this.view.style.fontSize = best / 10;
+    if (initialLineHeight > 0) this.view.style.lineHeight = initialLineHeight * best / (initialSize * 10);
+    return this;
+  }
+
   protected override applyAnchor(anchorX: number, anchorY: number): this {
     this.view.anchor.set(anchorX, anchorY);
     return this;

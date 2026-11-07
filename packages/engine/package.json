@@ -1,6 +1,6 @@
 {
   "name": "@gamedevland/engine",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "type": "module",
   "description": "HTML5 game engine SDK for AI-assisted web game development.",
   "license": "MIT",

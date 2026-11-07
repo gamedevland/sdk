@@ -18,6 +18,7 @@ such as `@gamedevland/engine/assets` and `@gamedevland/engine/scenes`.
 
 | Package | Version | Summary |
 | --- | --- | --- |
+| Engine | [0.0.10](packages/engine/CHANGELOG.md#0010--2026-11-07) | Add language preferences and text fitting; recover blocked autoplay and prevent duplicate music. |
 | Engine | [0.0.9](packages/engine/CHANGELOG.md#009--2026-11-05) | Add opt-in viewport-native rendering and a canvas pixel budget. Existing DPR defaults stay the same. |
 | Engine | [0.0.8](packages/engine/CHANGELOG.md#008--2026-11-04) | Publish under MIT and improve startup, input, and resource cleanup. |
 | Engine | [0.0.7](packages/engine/CHANGELOG.md#007) | Add runtime activity and pointer metadata, and make prefab cleanup idempotent. |

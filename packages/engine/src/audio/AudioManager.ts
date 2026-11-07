@@ -2,6 +2,7 @@ import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/er
 
 import { AudioVolumeConfigDecoder } from './AudioVolumeConfigDecoder';
 import { AudioChannelPolicy } from './internal/AudioChannelPolicy';
+import { AudioInteractionUnlock } from './internal/AudioInteractionUnlock';
 import { AudioMutePolicy } from './internal/AudioMutePolicy';
 import { AudioSourceRegistry } from './internal/AudioSourceRegistry';
 import { HowlerAudioBackend } from './internal/HowlerAudioBackend';
@@ -43,6 +44,8 @@ export class AudioManager {
   private musicVolumeInitialized = false;
   private musicVolumeOverridden = false;
   private disposed = false;
+  private autoplayAttempt: Promise<void> | undefined;
+  private readonly interactionUnlock = new AudioInteractionUnlock(() => this.unlock());
 
   static createDefault(assets: AssetManager, options?: AudioManagerOptions): AudioManager {
     return new AudioManager(assets, new HowlerAudioBackend(), options);
@@ -61,7 +64,14 @@ export class AudioManager {
     });
   }
 
+  /** Engine-owned, scene-independent activation on the game's native input target. */
+  attachInteractionTarget(target: HTMLElement): void {
+    if (this.disposed) return;
+    this.interactionUnlock.attach(target);
+  }
+
   playMusic(assetId: AudioId, options?: PlayAudioOptions): AudioHandle | undefined {
+    if (this.disposed) return undefined;
     const musicOptions = this.mergeMusicOptions(options);
     this.rememberMusicRequest(assetId, musicOptions);
     this.ensureRememberedMusicSourceInBackground(assetId);
@@ -89,6 +99,10 @@ export class AudioManager {
     }
 
     this.sourceRegistry.ensureSourceRegistered(assetId);
+    if (this.backend.isPlaybackReady?.() === false) {
+      this.tryAutomaticUnlock();
+      return undefined;
+    }
     // Keep music single-instance even if the tracked handle was lost out of sync.
     this.backend.stopAll('music');
     this.stopActiveMusicHandle();
@@ -104,6 +118,10 @@ export class AudioManager {
       return undefined;
     }
     this.sourceRegistry.ensureSourceRegistered(assetId);
+    if (this.backend.isPlaybackReady?.() === false) {
+      this.tryAutomaticUnlock();
+      return undefined;
+    }
     return this.backend.play(assetId, this.mergeSfxOptions(options));
   }
 
@@ -280,10 +298,10 @@ export class AudioManager {
       return false;
     }
     if (!this.backend.isHandleActive(handle)) {
-      this.clearRememberedMusicRequest();
+      this.clearActiveMusic();
       return false;
     }
-    return true;
+    return this.backend.isHandlePlaying?.(handle) ?? true;
   }
 
   unloadSource(id: AudioId): void {
@@ -301,8 +319,11 @@ export class AudioManager {
     }
   }
 
-  unlock(): Promise<void> {
-    return Promise.resolve(this.backend.unlock());
+  async unlock(): Promise<void> {
+    if (this.disposed || !this.isMusicEnabled() && !this.isSfxEnabled()) return;
+    // Invoke synchronously before awaiting, preserving transient user activation.
+    await this.backend.unlock();
+    if (!this.disposed) this.restoreRememberedMusicIfNeeded();
   }
 
   dispose(): void {
@@ -310,6 +331,7 @@ export class AudioManager {
       return;
     }
     this.disposed = true;
+    this.interactionUnlock.dispose();
     this.clearRememberedMusicRequest();
     this.sourceRegistry.clear();
     this.mutePolicy.dispose();
@@ -349,10 +371,9 @@ export class AudioManager {
 
     const activeHandle = this.activeMusicHandle;
     if (activeHandle) {
-      if (this.backend.isHandleActive(activeHandle)) {
-        return;
-      }
-      this.clearActiveMusic();
+      const active = this.backend.isHandleActive(activeHandle);
+      if (active && this.activeMusicAssetId === rememberedRequest.assetId) return;
+      if (!active) this.clearActiveMusic();
     }
 
     if (!this.sourceRegistry.isSourceRegistered(rememberedRequest.assetId)) {
@@ -361,6 +382,10 @@ export class AudioManager {
     }
 
     this.sourceRegistry.ensureSourceRegistered(rememberedRequest.assetId);
+    if (this.backend.isPlaybackReady?.() === false) {
+      this.tryAutomaticUnlock();
+      return;
+    }
     // Restore must also clear any orphaned music instance before replay.
     this.backend.stopAll('music');
     const handle = this.backend.play(rememberedRequest.assetId, rememberedRequest.options);
@@ -371,6 +396,15 @@ export class AudioManager {
   private clearActiveMusic(): void {
     this.activeMusicHandle = undefined;
     this.activeMusicAssetId = undefined;
+  }
+
+  private tryAutomaticUnlock(): void {
+    if (this.disposed || this.autoplayAttempt) return;
+    // This automatic attempt may reject or stay pending until user activation.
+    // Native input always calls unlock() independently of this promise.
+    this.autoplayAttempt = this.unlock().catch(() => {}).finally(() => {
+      this.autoplayAttempt = undefined;
+    });
   }
 
   private clearRememberedMusicRequest(): void {

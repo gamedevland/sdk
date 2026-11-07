@@ -1,44 +1,32 @@
-export type SupportedLocaleCode = 'en' | 'ru';
+export type SupportedLocaleCode = 'en' | 'ru' | 'es' | 'pt-BR' | 'de' | 'fr' | 'it' | 'tr' | 'zh-CN' | 'ja' | 'ko';
 
-/**
- * Canonical supported locale codes used by runtime, build validation, and platform hints.
- */
+/** Canonical locale codes shared by runtime, configs and build tools. */
 export class LocaleCatalog {
-  static readonly EN: SupportedLocaleCode = 'en';
-  static readonly RU: SupportedLocaleCode = 'ru';
-  static readonly DEFAULT: SupportedLocaleCode = LocaleCatalog.EN;
-
-  private static readonly SUPPORTED_LIST = [LocaleCatalog.EN, LocaleCatalog.RU] as const;
-  private static readonly SUPPORTED = new Set<SupportedLocaleCode>(LocaleCatalog.SUPPORTED_LIST);
+  static readonly EN = 'en';
+  static readonly RU = 'ru';
+  static readonly DEFAULT = LocaleCatalog.EN;
+  private static readonly SUPPORTED_LIST: readonly SupportedLocaleCode[] = [
+    'en', 'ru', 'es', 'pt-BR', 'de', 'fr', 'it', 'tr', 'zh-CN', 'ja', 'ko',
+  ];
 
   static isSupported(locale: string): locale is SupportedLocaleCode {
-    return LocaleCatalog.SUPPORTED.has(locale as SupportedLocaleCode);
+    return this.SUPPORTED_LIST.some((code) => code === locale);
   }
 
-  static getSupportedList(): ReadonlyArray<SupportedLocaleCode> {
-    return LocaleCatalog.SUPPORTED_LIST;
-  }
+  static getSupportedList(): ReadonlyArray<SupportedLocaleCode> { return this.SUPPORTED_LIST; }
 
   static normalize(input: string | null | undefined): SupportedLocaleCode | null {
-    if (typeof input !== 'string') {
-      return null;
-    }
-    const trimmed = input.trim();
-    if (trimmed.length === 0) {
-      return null;
-    }
-    const normalized = trimmed.toLowerCase().split(/[-_]/)[0];
-    if (normalized === undefined) {
-      return null;
-    }
-    return LocaleCatalog.isSupported(normalized) ? normalized : null;
+    if (typeof input !== 'string') return null;
+    const normalized = input.trim().toLowerCase().replace(/_/g, '-');
+    const base = normalized.split('-')[0];
+    if (base === 'pt') return 'pt-BR';
+    if (base === 'zh') return 'zh-CN';
+    return base !== undefined && this.isSupported(base) ? base : null;
   }
 
   static coerceSupported(input: string | null | undefined): SupportedLocaleCode {
-    return LocaleCatalog.normalize(input) ?? LocaleCatalog.DEFAULT;
+    return this.normalize(input) ?? this.DEFAULT;
   }
 
-  static getConfigId(locale: SupportedLocaleCode): string {
-    return `json/locales/${locale}.json`;
-  }
+  static getConfigId(locale: SupportedLocaleCode): string { return `json/locales/${locale}.json`; }
 }

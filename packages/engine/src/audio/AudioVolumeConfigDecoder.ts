@@ -1,4 +1,5 @@
 import { SchemaDecoder } from '@engine/validation';
+import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
 export class AudioVolumeConfigDecoder {
   private static readonly NON_EMPTY_STRING = SchemaDecoder.string({ nonEmpty: true });
@@ -20,6 +21,12 @@ export class AudioVolumeConfigDecoder {
         source,
         `$.${key}`,
       );
+      if (decodedKey.startsWith('channel.') && decodedKey !== 'channel.music' && decodedKey !== 'channel.sfx') {
+        throw EngineErrorFactory.invalidInput({
+          code: EngineErrorCode.AudioInvalidConfig, subsystem: EngineSubsystem.Audio,
+          message: 'Unknown audio channel in volume config', details: { source, key: decodedKey },
+        });
+      }
       decoded[decodedKey] = decodedValue;
     }
     return decoded;

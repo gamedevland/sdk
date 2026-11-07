@@ -53,6 +53,10 @@ export interface AudioBackend {
   createSource(source: AudioSourceDescriptor): void;
   hasSource(id: AudioId): boolean;
   isHandleActive(handle: AudioHandle): boolean;
+  /** Actual playback state, excluding queued/blocked requests. */
+  isHandlePlaying?(handle: AudioHandle): boolean;
+  /** False while Web Audio is suspended; used to discard stale one-shot SFX. */
+  isPlaybackReady?(): boolean;
   play(id: AudioId, options?: PlayAudioOptions): AudioHandle;
   pause(handle: AudioHandle): void;
   stop(handle: AudioHandle): void;

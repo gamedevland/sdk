@@ -24,6 +24,7 @@ export type EngineErrorCodeValue =
   | 'AUDIO_INVALID_ARGUMENT'
   | 'AUDIO_INVALID_CONFIG'
   | 'AUDIO_CONFLICT'
+  | 'AUDIO_PLAYBACK_BLOCKED'
   | 'PARTICLE_MISSING_REQUIRED'
   | 'PARTICLE_INVALID_ARGUMENT'
   | 'PARTICLE_INVALID_CONFIG'
@@ -72,6 +73,7 @@ export class EngineErrorCode {
   static readonly AudioInvalidArgument = 'AUDIO_INVALID_ARGUMENT';
   static readonly AudioInvalidConfig = 'AUDIO_INVALID_CONFIG';
   static readonly AudioConflict = 'AUDIO_CONFLICT';
+  static readonly AudioPlaybackBlocked = 'AUDIO_PLAYBACK_BLOCKED';
 
   static readonly ParticleMissingRequired = 'PARTICLE_MISSING_REQUIRED';
   static readonly ParticleInvalidArgument = 'PARTICLE_INVALID_ARGUMENT';
@@ -120,6 +122,7 @@ export class EngineErrorCode {
     EngineErrorCode.AudioInvalidArgument,
     EngineErrorCode.AudioInvalidConfig,
     EngineErrorCode.AudioConflict,
+    EngineErrorCode.AudioPlaybackBlocked,
     EngineErrorCode.ParticleMissingRequired,
     EngineErrorCode.ParticleInvalidArgument,
     EngineErrorCode.ParticleInvalidConfig,

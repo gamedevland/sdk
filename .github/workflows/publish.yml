@@ -73,6 +73,12 @@ jobs:
       - name: Test screen resolution
         run: npm run test:screen --workspace @gamedevland/engine
 
+      - name: Test locale preferences and text fitting
+        run: npm run test:locales
+
+      - name: Test audio activation and single-instance music
+        run: npm run test:audio
+
       - name: Test shared tooling
         run: npm test --workspace @gamedevland/vite
 
