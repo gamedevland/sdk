@@ -11,9 +11,17 @@ const npmEntry = process.env.npm_execpath;
 const npm = (cwd, args, capture = false) => execFileSync(npmEntry ? process.execPath : 'npm',
   npmEntry ? [npmEntry, ...args] : args, { cwd, encoding: 'utf8',
     stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit' });
+const pack = name => {
+  const result = JSON.parse(npm(workspace, ['pack', '--workspace', name, '--pack-destination', scratch, '--json'], true));
+  // npm 10/11 return an array; npm 12 keys workspace results by package name.
+  const pkg = Array.isArray(result) ? result.find(item => item.name === name) : result[name];
+  assert.equal(pkg?.name, name, 'Unexpected npm pack result');
+  assert.equal(typeof pkg.filename, 'string');
+  return pkg;
+};
 try {
-  const engine = JSON.parse(npm(workspace, ['pack', '--workspace', '@gamedevland/engine', '--pack-destination', scratch, '--json'], true))[0];
-  const tooling = JSON.parse(npm(workspace, ['pack', '--workspace', '@gamedevland/vite', '--pack-destination', scratch, '--json'], true))[0];
+  const engine = pack('@gamedevland/engine');
+  const tooling = pack('@gamedevland/vite');
   const project = path.join(scratch, 'project');
   execFileSync(process.execPath, [path.join(workspace, 'packages/vite/dist/cli/entry.js'), 'create', project, '--no-install'], { stdio: 'inherit' });
   const file = path.join(project, 'package.json');
