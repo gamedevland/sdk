@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.11 — 2026-11-07
+
+- Complete the existing CrazyGames v3 integration with system locale hints,
+  game completion percentage and feedback context through optional platform capabilities.
+- Add `PlatformStorageAdapter` for exclusive platform-owned data access, with lazy browser
+  storage only when no platform backend exists. Cloud misses/errors never resurrect local saves.
+- Separate ad request pause from audio muting: CrazyGames keeps music playing during the
+  auction and mutes on `adStarted`, preserving portal/user/background mute gates on completion.
+- Guard concurrent requests, resolve pending ads on disposal, ignore late callbacks,
+  clean up settings listeners, and prevent post-disposal asynchronous initialization.
+- Expose advertising availability and validate completion percentages. Existing adapters
+  retain their previous request-time mute behavior and remain source compatible.
+- Add deterministic CrazyGames lifecycle, Data Module, locale, ad and disposal checks.
+
 ## 0.0.10 — 2026-11-07
 
 ### Localization and text

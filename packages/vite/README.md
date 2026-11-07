@@ -1,5 +1,20 @@
 # @gamedevland/vite
 
+## Create a blank game
+
+```sh
+npx --yes --package @gamedevland/vite@0.2.0 gamedevland create my-game
+cd my-game
+npm run dev
+```
+
+When installed locally, run `npx gamedevland create my-game`. The CLI generates a
+strict TypeScript/PixiJS project with an empty FSM scene, scene/global DI, JSON
+layout and audio config, and web/CrazyGames build scripts. Dependencies are installed
+by default. `--no-install` skips installation; `--name my-game` sets the npm name
+when the destination directory has a different name. New or empty directories only;
+nonempty directories and symlink destinations are rejected without overwriting files.
+
 Vite build tooling for HTML5 games built with `@gamedevland/engine`.
 
 ## Install

@@ -195,7 +195,12 @@ export class Engine
     });
     this.runtimeController = new EnginePauseController({
       onPausedChanged: this.applyPausedState.bind(this),
-      onActivityChanged: (reasons) => this.activity.update(reasons),
+      onActivityChanged: (reasons) => {
+        this.activity.update(reasons);
+        // Some platforms require audio to continue during the ad auction.
+        this.audio.setRuntimePaused(reasons.some((reason) =>
+          reason !== 'adBreak' || this.platform.shouldMuteAudioOnAdRequest()));
+      },
     });
     this.platform.setAdBreakHooks(
       new AdBreakRuntimePolicy((paused: boolean) => this.runtimeController.setAdBreakPaused(paused)).createHooks(),
@@ -347,7 +352,6 @@ export class Engine
   private applyPausedState(paused: boolean): void {
     this.runtimeScheduler.setPaused(paused);
     this.tweens.setRuntimePaused(paused);
-    this.audio.setRuntimePaused(paused);
     this.scenes.setRuntimePaused(paused);
     this.events.emit({
       type: Engine.RuntimePausedChangedEvent,

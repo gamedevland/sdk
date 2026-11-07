@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0 — 2026-11-07
+
+- Add `gamedevland create <directory>` to generate a blank SDK consumer project and install
+  its dependencies, with `--no-install` for offline/custom installation and `--name` for
+  an explicit npm package name.
+- Ship the template inside the npm package: strict TypeScript, Vite, ESLint, an empty
+  FSM scene with DI/layout registration, manifest-based JSON assets, and audio volume config.
+- Include web and CrazyGames development/build scripts with relative asset paths.
+- Reject nonempty destinations, symlink destinations and invalid names; never overwrite
+  existing project files. Invoke dependency installation without interpolating user paths.
+- Update the engine dependency to 0.0.11 and test generated project structure and CLI behavior.
+
 ## 0.1.2 — 2026-11-04
 
 - Release the package and its source under MIT.
