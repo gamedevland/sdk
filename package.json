@@ -9,6 +9,8 @@
   "scripts": {
     "test:locales": "node scripts/verify-locales.mjs",
     "test:audio": "node scripts/verify-audio-activation.mjs && node scripts/verify-music-single-instance.mjs",
+    "test:crazygames": "node scripts/verify-crazygames.mjs",
+    "test:project-template": "node scripts/verify-project-template.mjs",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present"

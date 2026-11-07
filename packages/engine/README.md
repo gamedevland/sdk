@@ -12,10 +12,8 @@ Source files are available in [the SDK repository](https://github.com/gamedevlan
 
 ## Changelog
 
-**0.0.10** adds configurable language preferences, observable locale changes,
-measured text fitting, automatic audio activation recovery, and music deduplication
-across loading, user gestures, and scene changes. The default locale subset and
-existing custom audio backends remain compatible.
+**0.0.11** completes CrazyGames v3 data/lifecycle integration and adds platform-owned
+storage, ad playback mute timing, locale hints, completion reporting and feedback context.
 [Full engine changelog](https://github.com/gamedevland/sdk/blob/main/packages/engine/CHANGELOG.md).
 
 ## Install
@@ -51,6 +49,43 @@ For `dragend` input events, `InputEventBase.dragEndReason` distinguishes a norma
 (`pointerup`) from a system cancellation (`pointercancel`).
 
 Layout nodes expose `getLocalBounds()` for renderer-independent local geometry queries.
+
+## CrazyGames v3
+
+Build with `VITE_PLATFORM=crazygames` through `@gamedevland/vite`. The official v3
+script is injected before the game module. The engine awaits SDK initialization,
+handles supported/disabled environments, and cleans up listeners and pending ads.
+
+Use `system.boot.autoLoadingFinished: false` for a separate loading scene and call
+`engine.platform.loadingFinished()` when required assets are ready. Report
+`gameplayStart()`/`gameplayStop()` for playable states and menus, not page focus events.
+`happytime()`, `reportGameCompletedPercentage(0..100)`, `setGameContext({...})` and
+`clearGameContext()` forward supported signals; unsupported adapters are no-ops.
+`getPreferredLocale()` returns the platform system locale when available.
+
+Use `new PlatformStorageAdapter(engine.platform)` from the configs barrel for campaign,
+settings and other synchronous key/value saves. Create/use it after platform initialization.
+When CrazyGames data is available, all reads/writes/removes use that module exclusively;
+neither missing cloud keys nor write errors fall back to browser saves. On web, the
+adapter lazily uses localStorage. The platform owns cloud synchronization, guest data,
+and account-change reloads. Enable **Yes, using the Data Module from the CrazyGames SDK**
+in the Developer Portal. The module's 1 MB limit and debounce still apply.
+
+Ads pause runtime/input from request until a terminal callback. CrazyGames audio remains
+audible during the auction and mutes only on `adStarted`; portal mute settings remain
+authoritative afterward. Reward success requires `adFinished`. Concurrent requests,
+SDK errors and disposal cannot grant duplicate rewards. The request watchdog ends on
+`adStarted` so a long real ad is not resumed prematurely. `isAdvertisingAvailable()`
+describes SDK availability, not portal monetization approval; games must hide video
+placements in Basic Launch, where ads are disabled.
+
+References: [SDK initialization](https://docs.crazygames.com/sdk/intro/),
+[game signals](https://docs.crazygames.com/sdk/game/),
+[Data Module](https://docs.crazygames.com/sdk/data/),
+[ad requirements](https://docs.crazygames.com/requirements/ads/).
+
+Run `npm run test:crazygames` for deterministic adapter checks. These use a simulated
+SDK and do not replace the CrazyGames Developer Portal QA tool or real devices.
 
 ## Screen resolution
 

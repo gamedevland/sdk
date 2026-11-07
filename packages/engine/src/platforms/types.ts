@@ -32,6 +32,13 @@ export interface PlatformRuntimeHooks {
  * init() -> loadingFinished() -> gameplayStart/Stop() -> happytime() -> commercialBreak/rewardedBreak()
  */
 export interface PlatformAdapter {
+  /** False when the adapter mutes only after an ad playback callback. Defaults to true. */
+  readonly muteAudioOnAdRequest?: boolean;
+  /** Optional capabilities; unsupported adapters remain compatible. */
+  isAdvertisingAvailable?(): boolean;
+  reportGameCompletedPercentage?(percentage: number): void;
+  setGameContext?(context: Readonly<Record<string, string | number | boolean>>): void;
+  clearGameContext?(): void;
   /** Unique platform identifier (e.g. 'poki', 'crazygames', 'null'). */
   readonly id: string;
 

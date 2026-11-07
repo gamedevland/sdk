@@ -6,6 +6,8 @@ Read the [GameDevLand SDK documentation](https://gamedev.land/academy/sdk/).
 
 | Package | Purpose | Documentation |
 | --- | --- | --- |
+| Engine | [0.0.11](packages/engine/CHANGELOG.md#0011--2026-11-07) | Complete CrazyGames data/lifecycle integration, callback-based ad mute, progress and context. |
+| Vite | [0.2.0](packages/vite/CHANGELOG.md#020--2026-11-07) | Create a blank ready-to-build SDK game with `gamedevland create`. |
 | [`@gamedevland/engine`](https://www.npmjs.com/package/@gamedevland/engine) | Game runtime: scenes, assets, layouts, input, DI, FSM, audio, physics, particles and platform integration | [Engine README](packages/engine/README.md) |
 | [`@gamedevland/vite`](https://www.npmjs.com/package/@gamedevland/vite) | Vite configuration, platform SDK injection and Poki packaging/upload CLI | [Vite README](packages/vite/README.md) |
 
@@ -38,6 +40,17 @@ See the full [engine changelog](packages/engine/CHANGELOG.md),
 [Vite changelog](packages/vite/CHANGELOG.md), and [GitHub releases](https://github.com/gamedevland/sdk/releases).
 
 ## Install
+
+To create a blank game with dependencies installed:
+
+```bash
+npx --yes --package @gamedevland/vite@0.2.0 gamedevland create my-game
+cd my-game
+npm run dev
+```
+
+Use `--no-install` to generate files without installing dependencies. Existing files
+are never overwritten. The template contains one empty scene, not a demo game.
 
 Use Node.js 22.12+ or 24 and npm. Game projects use Vite 7 or 8 and modern ESM/TypeScript tooling.
 

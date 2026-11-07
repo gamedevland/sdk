@@ -12,6 +12,7 @@ export * from './services/IndexedDbStorageAdapter';
 export * from './services/LocalesService';
 export * from './services/LocalStorageAdapter';
 export * from './services/PersistentStorageAdapter';
+export * from './services/PlatformStorageAdapter';
 export * from './services/PersistentStorageCoordinator';
 export * from './services/SettingsEntry';
 export * from './services/SettingsService';

@@ -72,6 +72,25 @@ export class PlatformManager {
     return this.adapter.id;
   }
 
+  shouldMuteAudioOnAdRequest(): boolean { return this.adapter.muteAudioOnAdRequest !== false; }
+
+  isAdvertisingAvailable(): boolean {
+    return this.initialized && (this.adapter.isAdvertisingAvailable?.() ?? !['null', 'web'].includes(this.adapter.id));
+  }
+
+  reportGameCompletedPercentage(percentage: number): void {
+    if (!Number.isFinite(percentage) || percentage < 0 || percentage > 100) {
+      throw new RangeError('Game completion percentage must be between 0 and 100');
+    }
+    this.adapter.reportGameCompletedPercentage?.(percentage);
+  }
+
+  setGameContext(context: Readonly<Record<string, string | number | boolean>>): void {
+    this.adapter.setGameContext?.(context);
+  }
+
+  clearGameContext(): void { this.adapter.clearGameContext?.(); }
+
   happytime(): void {
     this.adapter.happytime();
   }

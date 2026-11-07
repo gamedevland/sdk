@@ -17,7 +17,9 @@ import type {
  * Platform adapter for CrazyGames HTML5 v3 SDK.
  */
 export class CrazyGamesPlatformAdapter implements PlatformAdapter {
+  private static readonly AD_REQUEST_TIMEOUT_MS = 90000;
   readonly id = 'crazygames';
+  readonly muteAudioOnAdRequest = false;
 
   private initialized = false;
   private disposed = false;
@@ -27,6 +29,9 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
   private dataStorageBackend: PlatformDataStorageBackend | null = null;
   private runtimeHooks: PlatformRuntimeHooks = Object.freeze({});
   private settingsListener: ((newSettings: CrazyGamesGameSettings) => void) | undefined;
+  private sdk: CrazyGamesSdkApi | undefined;
+  private pendingAd: ((success: boolean) => void) | undefined;
+  private adPlaying = false;
 
   async init(): Promise<void> {
     if (this.initialized || this.disposed) {
@@ -101,7 +106,21 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
   }
 
   getPreferredLocale(): string | null {
-    return null;
+    return this.getSdk()?.user?.systemInfo?.locale ?? null;
+  }
+
+  isAdvertisingAvailable(): boolean { return this.getSdk() !== undefined; }
+
+  reportGameCompletedPercentage(percentage: number): void {
+    try { this.getSdk()?.game.reportGameCompletedPercentage(percentage); } catch { /* Optional portal signal. */ }
+  }
+
+  setGameContext(context: Readonly<Record<string, string | number | boolean>>): void {
+    try { this.getSdk()?.game.setGameContext(context); } catch { /* Optional portal signal. */ }
+  }
+
+  clearGameContext(): void {
+    try { this.getSdk()?.game.clearGameContext(); } catch { /* Optional portal signal. */ }
   }
 
   setRuntimeHooks(hooks: PlatformRuntimeHooks): void {
@@ -136,8 +155,11 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
     }
     this.detachSettingsListener();
     this.disposed = true;
+    this.pendingAd?.(false);
     this.initPromise = undefined;
     this.dataStorageBackend = null;
+    this.sdk = undefined;
+    this.runtimeHooks = Object.freeze({});
   }
 
   private async initializeSdk(): Promise<void> {
@@ -152,6 +174,8 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
       this.initialized = true;
       return;
     }
+    if (this.disposed) return;
+    this.sdk = CrazyGamesSdkContract.isSupportedEnvironment(sdk.environment) ? sdk : undefined;
     const initializedSdk = this.getSdkAfterInit();
     if (!initializedSdk) {
       this.initialized = true;
@@ -163,6 +187,7 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
     try {
       initializedSdk.game.loadingStart();
       this.loadingStarted = true;
+      if (this.loadingFinishedSignaled) initializedSdk.game.loadingStop();
     } catch {
       // Ignore SDK failures to keep startup alive.
     }
@@ -182,7 +207,7 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
       return;
     }
     const listener = (newSettings: CrazyGamesGameSettings): void => {
-      this.applyAudioMuteSetting(newSettings);
+      if (!this.disposed) this.applyAudioMuteSetting(newSettings);
     };
     try {
       sdk.game.addSettingsChangeListener(listener);
@@ -197,7 +222,7 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
     if (!listener) {
       return;
     }
-    const sdk = CrazyGamesSdkContract.resolve();
+    const sdk = this.sdk;
     this.settingsListener = undefined;
     if (!sdk || !CrazyGamesSdkContract.isSupportedEnvironment(sdk.environment)) {
       return;
@@ -210,25 +235,38 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
   }
 
   private applyAudioMuteSetting(settings: CrazyGamesGameSettings | undefined): void {
-    this.runtimeHooks.onAudioMuteChanged?.(settings?.muteAudio === true);
+    this.runtimeHooks.onAudioMuteChanged?.(this.adPlaying || settings?.muteAudio === true);
   }
 
   private requestAd(type: CrazyGamesAdType): Promise<boolean> {
     const sdk = this.getSdk();
-    if (!sdk) {
+    if (!sdk || this.pendingAd) {
       return Promise.resolve(false);
     }
     return new Promise<boolean>((resolve) => {
       let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
       const finish = (success: boolean): void => {
         if (settled) {
           return;
         }
         settled = true;
-        resolve(success);
+        if (timer !== undefined) clearTimeout(timer);
+        this.pendingAd = undefined;
+        this.adPlaying = false;
+        this.applyAudioMuteSetting(sdk.game.settings);
+        resolve(success && !this.disposed);
       };
+      this.pendingAd = finish;
+      timer = setTimeout(() => finish(false), CrazyGamesPlatformAdapter.AD_REQUEST_TIMEOUT_MS);
       try {
         sdk.ad.requestAd(type, {
+          adStarted: () => {
+            if (settled || this.disposed) return;
+            if (timer !== undefined) clearTimeout(timer);
+            this.adPlaying = true;
+            this.applyAudioMuteSetting(sdk.game.settings);
+          },
           adFinished: () => finish(true),
           adError: () => finish(false),
         });
@@ -242,7 +280,7 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
     if (!this.initialized || this.disposed) {
       return undefined;
     }
-    const sdk = CrazyGamesSdkContract.resolve();
+    const sdk = this.sdk;
     if (!sdk) {
       return undefined;
     }
@@ -253,7 +291,7 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
     if (this.disposed) {
       return undefined;
     }
-    const sdk = CrazyGamesSdkContract.resolve();
+    const sdk = this.sdk;
     if (!sdk) {
       return undefined;
     }

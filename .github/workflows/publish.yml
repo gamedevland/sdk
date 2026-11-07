@@ -82,6 +82,12 @@ jobs:
       - name: Test shared tooling
         run: npm test --workspace @gamedevland/vite
 
+      - name: Test CrazyGames integration
+        run: npm run test:crazygames
+
+      - name: Verify packed blank project
+        run: npm run test:project-template
+
       - name: Inspect Vite package
         run: npm pack --dry-run --workspace @gamedevland/vite
 

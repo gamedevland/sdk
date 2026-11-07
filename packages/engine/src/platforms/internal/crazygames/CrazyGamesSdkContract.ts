@@ -25,6 +25,9 @@ export interface CrazyGamesSdkGameApi {
   gameplayStart(): void;
   gameplayStop(): void;
   happytime(): void;
+  reportGameCompletedPercentage(percentage: number): void;
+  setGameContext(context: Readonly<Record<string, string | number | boolean>>): void;
+  clearGameContext(): void;
   addSettingsChangeListener(listener: (newSettings: CrazyGamesGameSettings) => void): void;
   removeSettingsChangeListener(listener: (newSettings: CrazyGamesGameSettings) => void): void;
 }
@@ -46,6 +49,7 @@ export interface CrazyGamesSdkApi {
   readonly game: CrazyGamesSdkGameApi;
   readonly ad: CrazyGamesSdkAdApi;
   readonly data?: CrazyGamesSdkDataApi;
+  readonly user?: { readonly systemInfo?: { readonly locale?: string } };
 }
 
 interface CrazyGamesSdkWindow extends Window {
@@ -59,10 +63,11 @@ interface CrazyGamesSdkWindow extends Window {
  */
 export class CrazyGamesSdkContract {
   static isAvailable(): boolean {
-    return typeof (window as CrazyGamesSdkWindow).CrazyGames?.SDK !== 'undefined';
+    return this.resolve() !== undefined;
   }
 
   static resolve(): CrazyGamesSdkApi | undefined {
+    if (typeof window === 'undefined') return undefined;
     const crazyGamesWindow = window as CrazyGamesSdkWindow;
     const sdk = crazyGamesWindow.CrazyGames?.SDK;
     return typeof sdk !== 'undefined' ? sdk : undefined;

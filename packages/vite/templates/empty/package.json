@@ -1,0 +1,22 @@
+{
+  "name": "__PROJECT_NAME__",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "dev": "vite",
+    "dev:crazygames": "vite --mode crazygames",
+    "build": "vite build",
+    "build:crazygames": "vite build --mode crazygames --outDir ../dist/crazygames",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "preview": "vite preview"
+  },
+  "dependencies": { "@gamedevland/engine": "__ENGINE_VERSION__", "pixi.js": "^8.16.0" },
+  "devDependencies": {
+    "@gamedevland/vite": "__TOOLING_VERSION__", "@types/node": "^24.7.0",
+    "typescript": "^5.9.3", "vite": "^8.0.16", "eslint": "^9.37.0",
+    "@eslint/js": "^9.37.0", "typescript-eslint": "^8.46.0"
+  }
+}
