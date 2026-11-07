@@ -4,6 +4,7 @@ import { NullPlatformAdapter } from '../NullPlatformAdapter';
 import { CrazyGamesPlatformAdapter } from './crazygames/CrazyGamesPlatformAdapter';
 import { GameDistributionPlatformAdapter } from './gamedistribution/GameDistributionPlatformAdapter';
 import { PokiPlatformAdapter } from './poki/PokiPlatformAdapter';
+import { PlaygamaPlatformAdapter } from './playgama/PlaygamaPlatformAdapter';
 import { WebPlatformAdapter } from './web/WebPlatformAdapter';
 import { YandexPlatformAdapter } from './yandex/YandexPlatformAdapter';
 
@@ -22,6 +23,7 @@ export class PlatformAdapterResolver {
     [PlatformCatalog.CRAZYGAMES]: () => new CrazyGamesPlatformAdapter(),
     [PlatformCatalog.YANDEX]: () => new YandexPlatformAdapter(),
     [PlatformCatalog.GAMEDISTRIBUTION]: () => new GameDistributionPlatformAdapter(),
+    [PlatformCatalog.PLAYGAMA]: () => new PlaygamaPlatformAdapter(),
   };
 
   static create(): PlatformAdapter {

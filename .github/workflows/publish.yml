@@ -64,6 +64,12 @@ jobs:
       - name: Build Vite integration
         run: npm run build --workspace @gamedevland/vite
 
+      - name: Typecheck workspace
+        run: npm run typecheck
+
+      - name: Test Playgama integration
+        run: npm run test:playgama
+
       - name: Inspect engine package
         run: npm pack --dry-run --workspace @gamedevland/engine
 

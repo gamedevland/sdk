@@ -12,8 +12,11 @@ Source files are available in [the SDK repository](https://github.com/gamedevlan
 
 ## Changelog
 
-**0.0.11** completes CrazyGames v3 data/lifecycle integration and adds platform-owned
-storage, ad playback mute timing, locale hints, completion reporting and feedback context.
+**0.0.12 — 2026-11-07**
+
+- Add Playgama Bridge v2: lifecycle, ads, language, host pause/audio and saved progress.
+- Keep existing platform APIs; select the adapter with `VITE_PLATFORM=playgama`.
+
 [Full engine changelog](https://github.com/gamedevland/sdk/blob/main/packages/engine/CHANGELOG.md).
 
 ## Install
@@ -86,6 +89,30 @@ References: [SDK initialization](https://docs.crazygames.com/sdk/intro/),
 
 Run `npm run test:crazygames` for deterministic adapter checks. These use a simulated
 SDK and do not replace the CrazyGames Developer Portal QA tool or real devices.
+
+## Playgama Bridge v2
+
+Build with `VITE_PLATFORM=playgama` using `@gamedevland/vite`. Put
+`playgama-bridge-config.json` in `game/public/` (minimal config: `{}`). The Bridge
+script is injected automatically and detects the host portal.
+
+Use `engine.platform` for `loadingFinished()`, `gameplayStart()`/`gameplayStop()`,
+`happytime()`, `commercialBreak()` and `rewardedBreak()`. Reward success requires
+`rewarded` then `closed`. Host events control pause and audio; startup ads are
+host-owned. For a loading scene, set `system.boot.autoLoadingFinished: false` and
+signal readiness when the game is playable.
+
+Bridge saves are loaded before platform initialization completes. Configure
+`system.persistence.namespace` and disable `system.persistence.localStorage.enabled`
+and `system.persistence.indexedDB.enabled` to keep progress in Bridge storage.
+Other synchronous save consumers can use `new PlatformStorageAdapter(engine.platform)`
+after initialization. Writes are serialized; failed writes retain the memory cache
+and the next mutation retries. A failed initial read does not overwrite cloud data.
+
+See [Bridge setup](https://wiki.playgama.com/playgama/bridge-sdk/setup) and
+[storage requirements](https://wiki.playgama.com/playgama/bridge-sdk/api/storage).
+`npm run test:playgama` checks simulated lifecycle, ads, storage and cleanup;
+real portal/device QA remains separate.
 
 ## Screen resolution
 

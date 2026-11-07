@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.12 — 2026-11-07
+
+- Add Playgama Bridge v2: lifecycle signals, locale, host pause/audio, interstitial and rewarded ads.
+- Restore validated Bridge saves before initialization completes and serialize cached writes.
+- Guard concurrent ads, loading timeouts and disposal; add lifecycle, storage and ad regression checks.
+
 ## 0.0.11 — 2026-11-07
 
 - Complete the existing CrazyGames v3 integration with system locale hints,

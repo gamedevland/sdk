@@ -7,6 +7,7 @@ export class PlatformCatalog {
   static readonly CRAZYGAMES = 'crazygames';
   static readonly YANDEX = 'yandex';
   static readonly GAMEDISTRIBUTION = 'gamedistribution';
+  static readonly PLAYGAMA = 'playgama';
 
   private static readonly SUPPORTED = new Set<string>([
     PlatformCatalog.WEB,
@@ -14,6 +15,7 @@ export class PlatformCatalog {
     PlatformCatalog.CRAZYGAMES,
     PlatformCatalog.YANDEX,
     PlatformCatalog.GAMEDISTRIBUTION,
+    PlatformCatalog.PLAYGAMA,
   ]);
 
   static getDefault(): string {
@@ -34,4 +36,5 @@ export type PlatformId =
   | typeof PlatformCatalog.POKI
   | typeof PlatformCatalog.CRAZYGAMES
   | typeof PlatformCatalog.YANDEX
-  | typeof PlatformCatalog.GAMEDISTRIBUTION;
+  | typeof PlatformCatalog.GAMEDISTRIBUTION
+  | typeof PlatformCatalog.PLAYGAMA;

@@ -26,6 +26,11 @@ export class BuildPlatformSdkCatalog {
       ),
     ],
     [PlatformCatalog.YANDEX]: () => [BuildPlatformSdkCatalog.createScriptTag('/sdk.js')],
+    [PlatformCatalog.PLAYGAMA]: () => [
+      BuildPlatformSdkCatalog.createScriptTag(
+        'https://bridge.playgama.com/v2/stable/playgama-bridge.js',
+      ),
+    ],
     [PlatformCatalog.GAMEDISTRIBUTION]: (options?: BuildPlatformSdkCatalogOptions) =>
       BuildGameDistributionSdkHeadTagCatalog.resolve(options?.gameDistributionGameId),
   };

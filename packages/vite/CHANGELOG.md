@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 — 2026-11-07
+
+- Support `VITE_PLATFORM=playgama` and inject the official Playgama Bridge v2 script.
+- Use engine 0.0.12 for generated projects; verify SDK ordering and Bridge config copying.
+
 ## 0.2.0 — 2026-11-07
 
 - Add `gamedevland create <directory>` to generate a blank SDK consumer project and install

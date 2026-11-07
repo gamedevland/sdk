@@ -1,9 +1,18 @@
 # @gamedevland/vite
 
+## Changelog
+
+**0.2.1 — 2026-11-07**
+
+- Add Playgama Bridge v2 script injection and use engine 0.0.12.
+- Keep `gamedevland create` for blank projects, with dependency installation and web/CrazyGames builds.
+
+[Full changelog](https://github.com/gamedevland/sdk/blob/main/packages/vite/CHANGELOG.md).
+
 ## Create a blank game
 
 ```sh
-npx --yes --package @gamedevland/vite@0.2.0 gamedevland create my-game
+npx --yes --package @gamedevland/vite@0.2.1 gamedevland create my-game
 cd my-game
 npm run dev
 ```
@@ -40,6 +49,18 @@ export default ({ mode }: { readonly mode: string }) =>
 
 The package provides the shared Gamedev Land platform configuration, development proxy setup,
 environment resolution, and platform SDK injection used by engine-based game projects.
+
+## Playgama builds
+
+```bash
+VITE_PLATFORM=playgama vite build --outDir ../dist/playgama
+```
+
+Put `playgama-bridge-config.json` in `game/public/` (minimal config: `{}`). Vite
+copies it next to `index.html` and injects the official Bridge v2 script before the
+game. Bridge detects the host portal; existing direct portal targets remain available.
+See [Bridge setup](https://wiki.playgama.com/playgama/bridge-sdk/setup) and the
+[engine integration guide](../engine/README.md#playgama-bridge-v2).
 
 ## Shared Poki tools (Node.js 20.19+)
 
