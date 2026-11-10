@@ -1,6 +1,6 @@
 {
   "name": "@gamedevland/engine",
-  "version": "0.0.13-hybrid.2",
+  "version": "0.0.13-refactor.1",
   "type": "module",
   "description": "HTML5 game engine SDK for AI-assisted web game development.",
   "license": "MIT",
@@ -23,7 +23,8 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
-    "MIGRATION_RENDERERS.md"
+    "MIGRATION_RENDERERS.md",
+    "MIGRATION_RUNTIME.md"
   ],
   "publishConfig": {
     "access": "public"

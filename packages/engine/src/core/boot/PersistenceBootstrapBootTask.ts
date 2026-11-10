@@ -8,6 +8,7 @@ export class PersistenceBootstrapBootTask implements EngineBootTask {
   constructor(
     private readonly config: GameConfig['system'] | undefined,
     private readonly platformManager: PlatformManager,
+    private readonly coordinator: PersistentStorageCoordinator,
   ) {}
 
   async run(): Promise<void> {
@@ -15,7 +16,8 @@ export class PersistenceBootstrapBootTask implements EngineBootTask {
     if (!persistence) {
       return;
     }
-    PersistentStorageCoordinator.shared().configure({
+    this.coordinator.configure({
+      policy: persistence.policy ?? 'platform-exclusive',
       databaseName: persistence.indexedDB?.databaseName ?? 'engine-persistence',
       namespace: persistence.namespace,
       browserStorage: {
@@ -24,6 +26,6 @@ export class PersistenceBootstrapBootTask implements EngineBootTask {
       },
       platformDataStorageBackend: this.platformManager.getDataStorageBackend(),
     });
-    await PersistentStorageCoordinator.shared().bootstrap();
+    await this.coordinator.bootstrap();
   }
 }

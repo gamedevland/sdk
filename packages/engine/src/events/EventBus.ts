@@ -14,20 +14,26 @@ export class EventBus implements IEventBus {
   private handlers: Map<string, Set<EventHandler>> = new Map();
   private anyHandlers: Set<EventHandler> = new Set();
 
-  constructor(private readonly onError: (error: unknown, event: AppEvent) => void =
-    (error, event) => console.error('Event handler failed: ' + event.type, error)) {}
+  constructor(
+    private readonly onError: (error: unknown, event: AppEvent) => void = (error, event) =>
+      console.error('Event handler failed: ' + event.type, error),
+  ) {}
 
   private invoke(handler: EventHandler, event: AppEvent): void {
     try {
       const result = handler(event);
-      if (result) void Promise.resolve(result).catch(error => this.reportError(error, event));
+      if (result) void Promise.resolve(result).catch((error) => this.reportError(error, event));
     } catch (error) {
       this.reportError(error, event);
     }
   }
 
   private reportError(error: unknown, event: AppEvent): void {
-    try { this.onError(error, event); } catch { /* Error observers cannot break event delivery. */ }
+    try {
+      this.onError(error, event);
+    } catch {
+      /* Error observers cannot break event delivery. */
+    }
   }
 
   /**
@@ -76,6 +82,12 @@ export class EventBus implements IEventBus {
   onAny(handler: EventHandler): () => void {
     this.anyHandlers.add(handler);
     return () => this.anyHandlers.delete(handler);
+  }
+
+  /** Release all listeners owned by this bus. */
+  clear(): void {
+    this.handlers.clear();
+    this.anyHandlers.clear();
   }
 
   private assertNoPayloadField(e: EventBusEmitInput): void {

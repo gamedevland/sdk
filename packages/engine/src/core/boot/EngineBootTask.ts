@@ -1,3 +1,3 @@
 export interface EngineBootTask {
-  run(): Promise<void>;
+  run(signal?: AbortSignal): Promise<void>;
 }

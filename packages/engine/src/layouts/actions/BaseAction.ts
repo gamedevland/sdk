@@ -1,3 +1,4 @@
+import { DisposalScope } from '../../lifecycle/DisposalScope';
 /**
  * Base class for layout node actions invoked via NodeBase action facade.
  *
@@ -19,6 +20,16 @@ export abstract class BaseAction<TNode extends NodeBase = NodeBase> {
   private _config: Readonly<Record<string, unknown>> = Object.freeze({});
   private readonly activeTasks = new Set<Promise<void>>();
   private readonly ownedTweens = new Set<TweenHandle>();
+  private readonly detachScope = new DisposalScope();
+
+  /** Own a synchronous cleanup callback until detach; manually releasing is idempotent. */
+  protected ownDisposer(dispose: () => void): () => void {
+    return this.detachScope.own(dispose);
+  }
+  protected get scopeSignal(): AbortSignal {
+    return this.detachScope.signal;
+  }
+
   private actionScopeVersion = 0;
   private detaching = false;
 
@@ -76,6 +87,8 @@ export abstract class BaseAction<TNode extends NodeBase = NodeBase> {
    * Initialize action with owning node and raw config data. Called by actions wiring.
    */
   init(node: NodeBase, data?: Record<string, unknown>): void {
+    if (this._node || this.detachScope.disposed)
+      throw new Error('Action instances can only be initialized once');
     this.detaching = false;
     node.requireNode(this.nodeType);
     this._node = node;
@@ -176,7 +189,18 @@ export abstract class BaseAction<TNode extends NodeBase = NodeBase> {
   onDetach(): void | Promise<void> {
     this.actionScopeVersion += 1;
     this.detaching = true;
-    this.killOwnedTweens();
+    const errors: unknown[] = [];
+    try {
+      this.killOwnedTweens();
+    } catch (error) {
+      errors.push(error);
+    }
+    try {
+      this.detachScope.dispose();
+    } catch (error) {
+      errors.push(error);
+    }
+    if (errors.length) throw new AggregateError(errors, 'Behavior detach failed');
   }
 
   async completeDetach(): Promise<void> {

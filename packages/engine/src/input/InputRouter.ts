@@ -28,7 +28,7 @@ export class InputRouter {
     const bound = this.regType.bind(handler, thisArg);
     set.add(bound);
     return () => {
-      set!.delete(bound);
+      set?.delete(bound);
       this.regType.unbind(handler, thisArg);
       if (set && set.size === 0) this.byType.delete(type);
     };
@@ -73,11 +73,11 @@ export class InputRouter {
     const bound = reg.bind(handler, thisArg);
     set.add(bound);
     return () => {
-      set!.delete(bound);
-      reg!.unbind(handler, thisArg);
+      set?.delete(bound);
+      reg?.unbind(handler, thisArg);
       if (set && set.size === 0) {
-        map!.delete(type);
-        regMap!.delete(type);
+        map?.delete(type);
+        regMap?.delete(type);
       }
       if (map && map.size === 0) this.byNode.delete(nodeId);
       if (regMap && regMap.size === 0) this.regNode.delete(nodeId);

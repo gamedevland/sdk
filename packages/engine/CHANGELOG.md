@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.13-refactor.1 — local validation build
+
+- Isolate optional physics registration from renderer selection; use narrow DI ports.
+- Add owner disposal scopes, cancellable engine/scene lifetimes and boot cancellation.
+- Add strict required asset loading, global concurrency, cancellation and explicit cache eviction.
+- Make persistence engine-owned with explicit platform-exclusive/mirror policies.
+- Add ordered camera/world/UI presentation and observational runtime diagnostics.
+- Support component-owned Three-to-Pixi texture surfaces used by Rings 3D.
+- Add DI cycle diagnostics and architecture validation in CI/release checks.
+- Breaking storage/physics migration: see MIGRATION_RUNTIME.md. No registry publication.
+
 ## 0.0.13-hybrid.2 — 2026-11-10
 
 - Add explicit Pixi, Three and hybrid modules with separate runtime/declaration graphs.

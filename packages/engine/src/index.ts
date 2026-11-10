@@ -32,3 +32,7 @@ export type {
 } from './validation';
 
 export * from './rendering';
+export { DisposalScope } from './lifecycle';
+export * from './diagnostics';
+export { PresentationScheduler } from './runtime/PresentationScheduler';
+export type { PresentationPhase, PresentationOptions } from './runtime/PresentationScheduler';

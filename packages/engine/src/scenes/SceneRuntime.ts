@@ -23,6 +23,8 @@ import type { GsapTweenManager } from '@engine/tween';
  * Scenes should depend on this contract instead of concrete Engine internals.
  */
 export interface SceneRuntime {
+  readonly presentation: import('../runtime/PresentationScheduler').PresentationScheduler;
+  readonly diagnostics?: import('../diagnostics').RuntimeDiagnostics;
   readonly rendering: RenderRuntime;
   readonly frames: FrameDriver;
   readonly activity: RuntimeActivity;

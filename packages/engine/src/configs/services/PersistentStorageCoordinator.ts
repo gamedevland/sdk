@@ -5,7 +5,10 @@ import { PersistentStorageBackendResolver } from './internal/PersistentStorageBa
 import type { PersistentStorageBackend } from './internal/PersistentStorageBackend';
 import type { PlatformDataStorageBackend } from '@engine/platforms';
 
-interface PersistentStorageConfig {
+export type PersistencePolicy = 'platform-exclusive' | 'mirror';
+
+export interface PersistentStorageConfig {
+  readonly policy?: PersistencePolicy;
   readonly databaseName: string;
   readonly namespace: string;
   readonly browserStorage: PersistentStorageBrowserConfig;
@@ -18,7 +21,6 @@ export interface PersistentStorageBrowserConfig {
 }
 
 export class PersistentStorageCoordinator {
-  private static sharedInstance: PersistentStorageCoordinator | undefined;
   private static readonly DEFAULT_DATABASE_NAME = 'engine-persistence';
 
   private readonly cache = new Map<string, string>();
@@ -35,16 +37,10 @@ export class PersistentStorageCoordinator {
     platformDataStorageBackend: null,
   };
 
-  static shared(): PersistentStorageCoordinator {
-    if (!PersistentStorageCoordinator.sharedInstance) {
-      PersistentStorageCoordinator.sharedInstance = new PersistentStorageCoordinator();
-    }
-    return PersistentStorageCoordinator.sharedInstance;
-  }
-
   configure(config: PersistentStorageConfig): void {
     this.validateConfig(config);
     if (
+      this.config.policy === config.policy &&
       this.config.databaseName === config.databaseName &&
       this.config.namespace === config.namespace &&
       this.config.browserStorage.localStorage === config.browserStorage.localStorage &&
@@ -64,7 +60,13 @@ export class PersistentStorageCoordinator {
     if (!this.bootstrapPromise) {
       this.bootstrapPromise = this.bootstrapNamespace();
     }
-    await this.bootstrapPromise;
+    const pending = this.bootstrapPromise;
+    try {
+      await pending;
+    } catch (error) {
+      if (this.bootstrapPromise === pending) this.bootstrapPromise = undefined;
+      throw error;
+    }
   }
 
   getItem(key: string): string | null {
@@ -84,23 +86,23 @@ export class PersistentStorageCoordinator {
   }
 
   setItem(key: string, value: string): void {
+    this.getRequiredStorageBackend().setItem(key, value);
     this.knownKeys.add(key);
     this.cache.set(key, value);
-    this.getRequiredStorageBackend().setItem(key, value);
   }
 
   removeItem(key: string): void {
+    this.getRequiredStorageBackend().removeItem(key);
     this.knownKeys.add(key);
     this.cache.delete(key);
-    this.getRequiredStorageBackend().removeItem(key);
   }
 
   private async bootstrapNamespace(): Promise<void> {
+    const config = this.config;
     const entries = await this.getRequiredStorageBackend().bootstrap(this.resolveNamespacePrefix());
-
-    this.cache.clear();
-    this.knownKeys.clear();
+    if (this.config !== config) return;
     for (const [key, value] of entries) {
+      if (this.knownKeys.has(key)) continue;
       this.knownKeys.add(key);
       this.cache.set(key, value);
     }
@@ -115,6 +117,7 @@ export class PersistentStorageCoordinator {
       this.config.databaseName,
       this.config.platformDataStorageBackend,
       this.config.browserStorage,
+      this.config.policy ?? 'platform-exclusive',
     );
     return this.storageBackend;
   }
@@ -143,9 +146,9 @@ export class PersistentStorageCoordinator {
 
   private validateStorageConfig(config: PersistentStorageConfig): void {
     if (
-      config.browserStorage.localStorage
-      || config.browserStorage.indexedDB
-      || config.platformDataStorageBackend !== null
+      config.browserStorage.localStorage ||
+      config.browserStorage.indexedDB ||
+      config.platformDataStorageBackend !== null
     ) {
       return;
     }

@@ -1,5 +1,6 @@
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
+import { AssetLoadPolicy } from './internal/AssetLoadPolicy';
 import { AssetDescriptorResolver } from './internal/DescriptorResolver';
 import { AssetLoadCoordinator } from './internal/LoadCoordinator';
 import { BundleRegistry, LoaderRegistry } from './internal/Registry';
@@ -63,6 +64,7 @@ export class AssetManager {
     this.concurrency = {
       maxParallel: options?.concurrency?.maxParallel ?? 6,
     };
+    AssetLoadPolicy.validate(this.retry, this.concurrency);
     this.descriptorResolver = new AssetDescriptorResolver(this.bundles);
     this.loadCoordinator = new AssetLoadCoordinator({
       loaders: this.loaders,
@@ -159,7 +161,7 @@ export class AssetManager {
    */
   async getJson<T = unknown>(id: AssetId): Promise<T> {
     if (!this.has(id)) {
-      await this.load(id);
+      await this.loadRequired(id);
     }
     const data = this.get<T>(id);
     if (data === undefined) {
@@ -190,10 +192,19 @@ export class AssetManager {
    * @param ids Single id or list of ids to load.
    * @param opts Optional bundle filter.
    */
-  async load(ids: AssetId | AssetId[], opts?: { bundle?: string }): Promise<void> {
+  async load(ids: AssetId | AssetId[], opts?: { bundle?: string; signal?: AbortSignal }): Promise<void> {
     const descriptors = this.descriptorResolver.resolveDescriptorsForLoad(ids, opts?.bundle);
     if (descriptors.length === 0) return;
-    await this.loadDescriptors(descriptors);
+    await this.loadCoordinator.loadDescriptors(descriptors, false, opts?.signal);
+  }
+
+  /** Loads required IDs with original per-asset causes; abort only cancels this caller's wait. */
+  async loadRequired(
+    ids: AssetId | AssetId[],
+    opts?: { bundle?: string; signal?: AbortSignal },
+  ): Promise<void> {
+    const descriptors = this.descriptorResolver.resolveDescriptorsForLoad(ids, opts?.bundle);
+    await this.loadCoordinator.loadDescriptors(descriptors, true, opts?.signal);
   }
 
   /**
@@ -208,9 +219,15 @@ export class AssetManager {
   }
 
   /** Loads a bundle and rejects if any required resource failed, including after loader retries. */
-  async loadRequiredBundle(name: string): Promise<void> {
-    await this.loadBundle(name);
-    for (const id of this.getBundleAssetIds(name)) this.getRequired(id);
+  async loadRequiredBundle(name: string, options?: { signal?: AbortSignal }): Promise<void> {
+    const descriptors = this.descriptorResolver.dedupeDescriptorsOrThrow(this.getRequiredBundle(name).assets);
+    await this.loadCoordinator.loadDescriptors(descriptors, true, options?.signal);
+  }
+
+  /** Release an unused resource. Loader-owned live leases may reject disposal. */
+  unload(id: AssetId): void {
+    if (this.loadCoordinator.isLoading(id)) throw new Error('Cannot unload an asset while loading: ' + id);
+    this.store.unload(id);
   }
 
   /**
@@ -244,5 +261,4 @@ export class AssetManager {
     await this.loadCoordinator.destroy();
     this.store.destroy();
   }
-
 }

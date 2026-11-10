@@ -7,10 +7,10 @@ export class AssetBundlesBootTask {
     private readonly config: GameConfig,
   ) {}
 
-  async run(): Promise<void> {
+  async run(signal?: AbortSignal): Promise<void> {
     const preload = this.config.assets.preload ?? ['common', 'layouts'];
     for (const name of preload) {
-      await this.assets.loadRequiredBundle(name);
+      await this.assets.loadRequiredBundle(name, signal ? { signal } : undefined);
     }
   }
 }

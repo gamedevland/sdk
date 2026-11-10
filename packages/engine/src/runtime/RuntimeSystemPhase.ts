@@ -1,6 +1,6 @@
 import type { SceneServiceTickPhase } from '@engine/scenes/SceneService';
 
-export type RuntimeSystemPhase = 'layout' | SceneServiceTickPhase | 'particles' | 'tweens';
+export type RuntimeSystemPhase = 'layout' | SceneServiceTickPhase | 'particles' | 'tweens' | 'presentation';
 
 /**
  * Canonical runtime phase ordering used by scheduler-managed systems.
@@ -12,10 +12,11 @@ export class RuntimeSystemPhaseOrder {
     physics: 300,
     particles: 400,
     tweens: 500,
+    presentation: 600,
   };
 
   static isValid(value: string): value is RuntimeSystemPhase {
-    return value in RuntimeSystemPhaseOrder.PhaseIndex;
+    return Object.hasOwn(RuntimeSystemPhaseOrder.PhaseIndex, value);
   }
 
   static compare(left: RuntimeSystemPhase, right: RuntimeSystemPhase): number {

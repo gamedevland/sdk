@@ -1,3 +1,4 @@
+import { DisposalScope } from '../../lifecycle/DisposalScope';
 /**
  * Base class for attachable node components with enable/disable lifecycle and per-frame updates.
  *
@@ -18,6 +19,32 @@ export abstract class BaseComponent<TNode extends NodeBase = NodeBase> {
   private _rawConfig: Readonly<Record<string, unknown>> = Object.freeze({});
   private readonly activeTasks = new Set<Promise<void>>();
   private readonly ownedTweens = new Set<TweenHandle>();
+  private readonly detachScope = new DisposalScope();
+
+  /** Present after physics/tweens, automatically gated by enabled state and owner lifetime. */
+  protected onPresentation(
+    callback: (dt: number) => void,
+    options: Omit<import('../../runtime/PresentationScheduler').PresentationOptions, 'signal'> = {},
+  ): () => void {
+    const layout = options.layout ?? this.node.engine.getRequiredActiveLayout();
+    return this.ownDisposer(
+      this.node.engine.presentation.subscribe(
+        (dt) => {
+          if (this.enabled && !this.detaching) callback(dt);
+        },
+        { ...options, layout, signal: this.scopeSignal },
+      ),
+    );
+  }
+
+  /** Own a synchronous cleanup callback until detach; manually releasing is idempotent. */
+  protected ownDisposer(dispose: () => void): () => void {
+    return this.detachScope.own(dispose);
+  }
+  protected get scopeSignal(): AbortSignal {
+    return this.detachScope.signal;
+  }
+
   private componentScopeVersion = 0;
   private detaching = false;
 
@@ -67,6 +94,8 @@ export abstract class BaseComponent<TNode extends NodeBase = NodeBase> {
    * Called once by the engine when component is attached to a node.
    */
   init(node: TNode, data?: Record<string, unknown>): void {
+    if (this._node || this.detachScope.disposed)
+      throw new Error('Component instances can only be initialized once');
     this.detaching = false;
     node.requireNode(this.nodeType);
     this._node = node;
@@ -196,7 +225,18 @@ export abstract class BaseComponent<TNode extends NodeBase = NodeBase> {
   onDetach(): void | Promise<void> {
     this.componentScopeVersion += 1;
     this.detaching = true;
-    this.killOwnedTweens();
+    const errors: unknown[] = [];
+    try {
+      this.killOwnedTweens();
+    } catch (error) {
+      errors.push(error);
+    }
+    try {
+      this.detachScope.dispose();
+    } catch (error) {
+      errors.push(error);
+    }
+    if (errors.length) throw new AggregateError(errors, 'Behavior detach failed');
   }
 
   async completeDetach(): Promise<void> {

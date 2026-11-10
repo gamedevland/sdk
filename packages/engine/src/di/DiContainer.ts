@@ -1,6 +1,5 @@
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
-
 import type { DiContainerInterface, Provider, Token } from './types';
 
 type ProviderRecord = Provider & { lifetime: 'singleton' | 'transient' };
@@ -10,6 +9,7 @@ export class DiContainer implements DiContainerInterface {
   private readonly parent: DiContainer | undefined;
   private readonly providers = new Map<NormalizedToken, ProviderRecord>();
   private readonly singletons = new Map<NormalizedToken, unknown>();
+  private readonly resolving: NormalizedToken[] = [];
 
   constructor(parent?: DiContainer) {
     this.parent = parent;
@@ -44,12 +44,12 @@ export class DiContainer implements DiContainerInterface {
 
     if (provider.lifetime === 'singleton') {
       if (owner.singletons.has(key)) return owner.singletons.get(key) as T;
-      const instance = owner.instantiate(provider);
+      const instance = owner.instantiateGuarded(key, provider);
       owner.singletons.set(key, instance);
       return instance as T;
     }
 
-    return this.instantiate(provider) as T;
+    return this.instantiateGuarded(key, provider) as T;
   }
 
   createScope(): DiContainerInterface {
@@ -65,6 +65,25 @@ export class DiContainer implements DiContainerInterface {
     if (!this.parent) return local;
     const parent = this.parent.listTokensByKind(kind);
     return Array.from(new Set([...parent, ...local]));
+  }
+
+  private instantiateGuarded(key: NormalizedToken, provider: ProviderRecord): unknown {
+    if (this.resolving.includes(key)) {
+      throw EngineErrorFactory.invariant({
+        code: EngineErrorCode.DiInvalidConfig,
+        subsystem: EngineSubsystem.Di,
+        message: 'Circular dependency resolution',
+        details: {
+          chain: [...this.resolving, key].map((token) => this.tokenToDebugString(token)).join(' -> '),
+        },
+      });
+    }
+    this.resolving.push(key);
+    try {
+      return this.instantiate(provider);
+    } finally {
+      this.resolving.pop();
+    }
   }
 
   private instantiate(provider: ProviderRecord): unknown {

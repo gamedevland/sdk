@@ -67,6 +67,21 @@ jobs:
       - name: Typecheck workspace
         run: npm run typecheck
 
+      - name: Validate architecture
+        run: npm run lint
+
+      - name: Test runtime contracts
+        run: npm test --workspace @gamedevland/engine
+
+      - name: Test renderer boundaries
+        run: npm run test:renderers
+
+      - name: Test lifecycle stability
+        run: npm run test:stability
+
+      - name: Test archive dependency boundary
+        run: npm run test:archive-dependency
+
       - name: Test Playgama integration
         run: npm run test:playgama
 
