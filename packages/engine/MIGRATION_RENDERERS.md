@@ -75,3 +75,9 @@ pixels; this is a compatibility path for embedded content, not a zero-copy targe
 
 The paired local Vite package declares the engine as a peer, so installing the
 local renderer build never pulls a second engine copy from the registry.
+
+Canvas texture coverage edges require `premultiply-alpha-on-upload` when Pixi
+uploads the browser canvas. Labeling the source as already premultiplied skips
+the upload conversion and produces bright fringes. The browser GPU regression
+in Rings 3D verifies bounded composited edge colors at opaque and faded sprite
+alpha; the SDK surface contract also checks this upload mode.

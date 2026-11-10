@@ -31,9 +31,10 @@ export class ThreeTextureSurface {
     this.renderer.setSize(Math.max(1, Math.round(settings.width * settings.resolution)), Math.max(1, Math.round(settings.height * settings.resolution)), false);
     this.source = new CanvasSource({
       resource: this.renderer.domElement, resolution: settings.resolution,
-      autoDensity: false, alphaMode: 'premultiplied-alpha',
+      // Browser canvas uploads expose straight RGB at coverage edges. Premultiply on upload.
+      autoDensity: false, alphaMode: 'premultiply-alpha-on-upload',
     });
-    this.texture = new Texture({ source: this.source });
+    this.texture = new Texture({ source: this.source, dynamic: true });
     this.width = settings.width;
     this.height = settings.height;
     this.resolution = settings.resolution;

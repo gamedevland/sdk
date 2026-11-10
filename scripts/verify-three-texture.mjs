@@ -4,6 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
+import { Sprite } from 'pixi.js';
 
 const root = resolve(import.meta.dirname, '..');
 const temporary = mkdtempSync(resolve(root, '.texture-check-'));
@@ -46,6 +47,10 @@ try {
   assert.equal(renderer.options.alpha, true);
   assert.equal(renderer.options.preserveDrawingBuffer, true);
   assert.equal(renderer.alpha, 0);
+  assert.equal(surface.texture.dynamic, true);
+  const sprite = new Sprite(surface.texture);
+  assert.equal(sprite.visualBounds.maxX - sprite.visualBounds.minX, 540);
+  assert.equal(surface.texture.source.alphaMode, 'premultiply-alpha-on-upload');
   assert.equal(surface.texture.source.pixelWidth, 675);
   assert.equal(surface.texture.width, 540);
   assert.equal(renderer.domElement.width, 675);
@@ -55,6 +60,8 @@ try {
   assert.equal(renderer.calls.length, 1);
   assert.equal(uploads, 1);
   surface.resize(781, 443, 1.5);
+  assert.equal(sprite.visualBounds.maxX - sprite.visualBounds.minX, surface.texture.width);
+  assert.equal(sprite.visualBounds.maxY - sprite.visualBounds.minY, surface.texture.height);
   assert.equal(renderer.domElement.width, 1172);
   assert.equal(renderer.domElement.height, 665);
   assert.equal(surface.texture.source.pixelWidth, 1172);
