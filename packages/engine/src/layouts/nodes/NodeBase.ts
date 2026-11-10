@@ -11,13 +11,9 @@
  * - `update(dt)` is called from `SceneLayout` once per frame
  * - `destroy()` cleans up listeners, components and child nodes
  */
-// NodeBase — базовый класс узла
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
-import { NodeActions } from './internal/NodeActions';
-import { NodeChildren } from './internal/NodeChildren';
-import { NodeComponents } from './internal/NodeComponents';
-import { NodeInput } from './internal/NodeInput';
+import { NodeBase as LayoutNode } from '../NodeBase';
 import { NodeTweens } from './internal/NodeTweens';
 
 import type { Container } from './Container';
@@ -25,48 +21,24 @@ import type { Graphics } from './Graphics';
 import type { Sprite } from './Sprite';
 import type { Text } from './Text';
 import type { TexturedRopeNode } from './types';
-import type { BaseAction } from '../actions/BaseAction';
-import type { BaseComponent } from '../components/BaseComponent';
-import type { LayoutRuntime } from '@engine/core';
-import type { IEventBus } from '@engine/events/types';
-import type { ScreenManager } from '@engine/screen/ScreenManager';
 import type { TimelineBuilder, TweenHandle, TweenOptions } from '@engine/tween/types';
 import type * as PIXI from 'pixi.js';
 
-type NodeKind = 'sprite' | 'tilingSprite' | 'texturedRope' | 'container' | 'text' | 'graphics';
-type RuntimeClass<T> = abstract new (...args: never[]) => T;
+type NodeKind = 'sprite' | 'nineSliceSprite' | 'tilingSprite' | 'texturedRope' | 'container' | 'text' | 'graphics';
 
 interface TintableView {
   tint: number;
 }
 
-export abstract class NodeBase {
+export abstract class NodeBase extends LayoutNode {
   protected _view: PIXI.Container;
-  private _id: string | undefined;
-  private _components = new NodeComponents();
-  private _actions = new NodeActions();
-  private _children = new NodeChildren();
   private _tweens = new NodeTweens(
     () => this._engine,
     () => this._view,
   );
-  private _input = new NodeInput(
-    () => this._engine,
-    () => this._id,
-  );
   private readonly originalTintByView = new WeakMap<object, number>();
-  // events facade (read-only) to avoid components poking engine directly
-  get events(): IEventBus {
-    return this.getRequiredEngine().events;
-  }
-  // screen facade (read-only) for components
-  get screen(): ScreenManager {
-    return this.getRequiredEngine().screen;
-  }
-  // Доступ к движку будет установлен из SceneLayout/Engine при построении
-  protected _engine: LayoutRuntime | undefined;
-
   constructor(view: PIXI.Container) {
+    super();
     this._view = view;
   }
 
@@ -74,64 +46,10 @@ export abstract class NodeBase {
   get view(): PIXI.Container {
     return this._view;
   }
-  /** Node id as assigned by the layout builder. */
-  get id(): string | undefined {
-    return this._id;
-  }
-  set id(v: string | undefined) {
-    this._id = v;
-  }
-  /** Engine reference injected post-construction. */
-  get engine(): LayoutRuntime {
-    return this.getRequiredEngine();
-  }
-  set engine(e: LayoutRuntime | undefined) {
-    this._engine = e;
-  }
-
-  /** Resolve required engine reference (fail-fast). */
-  getRequiredEngine(): LayoutRuntime {
-    const engine = this._engine;
-    if (!engine) {
-      throw EngineErrorFactory.missingRequired({
-        code: EngineErrorCode.LayoutMissingRequired,
-        subsystem: EngineSubsystem.Layout,
-        message: 'Engine is not attached',
-        details: { method: 'NodeBase.getRequiredEngine' },
-      });
-    }
-    return engine;
-  }
-
-  /** Resolve required node id (fail-fast). */
-  getRequiredId(): string {
-    const id = this._id;
-    if (!id) {
-      throw EngineErrorFactory.missingRequired({
-        code: EngineErrorCode.LayoutMissingRequired,
-        subsystem: EngineSubsystem.Layout,
-        message: 'Node id is not set',
-        details: { method: 'NodeBase.getRequiredId' },
-      });
-    }
-    return id;
-  }
-
-  /** Resolve required events facade (fail-fast). */
-  getRequiredEvents(): IEventBus {
-    const engine = this.getRequiredEngine();
-    return engine.events;
-  }
-
   /** Tween helpers bound to this node's view. */
   get tweens(): NodeTweens {
     return this._tweens;
   }
-  /** Input helper to subscribe node-scoped handlers. */
-  get input(): NodeInput {
-    return this._input;
-  }
-
   show(): void {
     this.setVisible(true);
   }
@@ -385,7 +303,7 @@ export abstract class NodeBase {
     return { x: local.x, y: local.y };
   }
 
-  // Tween шорткаты
+  // Node-owned tween shortcuts
   /** Shortcut to engine.tweens.to for this view. */
   tweenTo(props: Record<string, number>, opts?: TweenOptions): TweenHandle | undefined {
     return this._engine?.tweens.to(this, props, opts);
@@ -410,77 +328,16 @@ export abstract class NodeBase {
     return this._engine?.tweens.timeline(setup, opts);
   }
 
-  /**
-   * Per-frame update entry: updates enabled components and child nodes.
-   * @param {number} dt — Delta time in seconds.
-   */
-  update(dt: number): void {
-    this._components.update(dt);
-    for (const child of this._children.values()) child.update(dt);
+  override getChildNode(path: string): NodeBase {
+    return super.getChildNode(path).requireNode(NodeBase);
   }
-
-  /**
-   * Dispose input, components, actions and children; attempts to kill active tweens.
-   * Always destroys the Pixi `view` of this node. Safe to call multiple times.
-   */
-  async destroy(): Promise<void> {
-    // авто-очистка твинов узла, если доступен движок
-    try {
-      this._engine?.tweens.kill(this);
-    } catch {
-      /* noop */
-    }
-    try {
-      this._input.destroy();
-    } catch {
-      /* noop */
-    }
-    await this._components.destroy();
-    for (const child of this._children.values()) await child.destroy();
-    try {
-      await this._actions.destroy();
-    } catch {
-      /* noop */
-    }
-    try {
-      // безопасно уничтожаем Pixi view, если ещё не уничтожен
-      if (!this._view.destroyed) this._view.destroy({ children: true });
-    } catch {
-      /* noop */
-    }
+  attach(child: LayoutNode): void {
+    this.view.addChild(child.requireNode(NodeBase).view);
   }
-
-  /**
-   * Find a child node by path (e.g., "a.b.c"). Throws if not found.
-   * @param {string} path — Dot-separated child path or local id.
-   * @returns {NodeBase} Child node reference.
-   */
-  getChildNode(path: string): NodeBase {
-    // path формата "a.b.c" или локальный id
-    const parts = path.split('.');
-    const first = parts[0];
-    if (!first) {
-      throw EngineErrorFactory.invalidInput({
-        code: EngineErrorCode.LayoutInvalidConfig,
-        subsystem: EngineSubsystem.Layout,
-        message: 'Child path is empty',
-        details: { path, method: 'NodeBase.getChildNode' },
-      });
-    }
-    let current: NodeBase = this._children.getChild(first);
-    for (let i = 1; i < parts.length; i++) {
-      const part = parts[i];
-      if (!part) {
-        throw EngineErrorFactory.invalidInput({
-          code: EngineErrorCode.LayoutInvalidConfig,
-          subsystem: EngineSubsystem.Layout,
-          message: 'Invalid child path',
-          details: { path, method: 'NodeBase.getChildNode' },
-        });
-      }
-      current = current.getChild(part);
-    }
-    return current;
+  detach(): void { this.view.removeFromParent(); }
+  protected destroyView(): void {
+    this._engine?.tweens.kill(this);
+    if (!this.view.destroyed) this.view.destroy({ children: true });
   }
 
   getChildSprite(path: string): Sprite {
@@ -569,112 +426,6 @@ export abstract class NodeBase {
     });
   }
 
-  /** Register a component on this node. */
-  addComponent(id: string, component: BaseComponent, autoEnable = true): void {
-    this._components.addComponent(id, component, autoEnable);
-  }
-
-  /** Resolve first component by class (deterministic, fail-fast). */
-  getComponent<TComponent extends BaseComponent>(expectedType: RuntimeClass<TComponent>): TComponent;
-  /** Resolve component by id (fail-fast on missing). */
-  getComponent<TComponent extends BaseComponent>(id: string): TComponent;
-  getComponent<TComponent extends BaseComponent>(
-    first: string | RuntimeClass<TComponent>,
-  ): TComponent {
-    try {
-      if (typeof first === 'string') {
-        return this._components.getComponentById(first) as TComponent;
-      }
-      return this._components.getFirstComponentByType(first);
-    } catch (error) {
-      const nodeId = this._id ?? '<unknown>';
-      const message = error instanceof Error ? error.message : String(error);
-      throw EngineErrorFactory.create({
-        code: EngineErrorCode.LayoutMissingRequired,
-        subsystem: EngineSubsystem.Layout,
-        message: 'Failed to resolve component',
-        details: { nodeId, method: 'NodeBase.getComponent', reason: message },
-        cause: error,
-      });
-    }
-  }
-
-  /** Resolve all components by class in deterministic attachment order. */
-  getComponents<TComponent extends BaseComponent>(
-    expectedType: RuntimeClass<TComponent>,
-  ): readonly TComponent[] {
-    return this._components.getComponentsByType(expectedType);
-  }
-
-  /** Enable an attached component by id (fail-fast on missing). */
-  enableComponent(id: string): void {
-    this._components.enableComponent(id);
-  }
-
-  /** Disable an attached component by id (fail-fast on missing). */
-  disableComponent(id: string): void {
-    this._components.disableComponent(id);
-  }
-
-  /** Register an action on this node. */
-  addAction(id: string, action: BaseAction): void {
-    this._actions.addAction(id, action);
-  }
-
-  /** Resolve an action by class (deterministic, fail-fast). */
-  getAction<TAction extends BaseAction>(expectedType: RuntimeClass<TAction>): TAction {
-    try {
-      return this._actions.getActionByType(expectedType);
-    } catch (error) {
-      const nodeId = this._id ?? '<unknown>';
-      const message = error instanceof Error ? error.message : String(error);
-      throw EngineErrorFactory.create({
-        code: EngineErrorCode.LayoutMissingRequired,
-        subsystem: EngineSubsystem.Layout,
-        message: 'Failed to resolve action',
-        details: { nodeId, method: 'NodeBase.getAction', reason: message },
-        cause: error,
-      });
-    }
-  }
-
-  /** Run an action by id. */
-  runAction(id: string, data?: Record<string, unknown>): Promise<void> {
-    return this._actions.runAction(id, data);
-  }
-
-  /** Cancel a node action without removing it from the node. */
-  cancelAction(id: string): void {
-    this._actions.cancelAction(id);
-  }
-
-  /** Register a logical child node by local id. */
-  addChild(id: string, child: NodeBase): void {
-    this._children.addChild(id, child);
-  }
-
-  /** Resolve a direct logical child by local id. */
-  getChild(id: string): NodeBase {
-    return this._children.getChild(id);
-  }
-
-  /** Check if a direct logical child with local id exists. */
-  hasChild(id: string): boolean {
-    return this._children.hasChild(id);
-  }
-
-  /** Remove and return a direct logical child by local id. */
-  removeChild(id: string): NodeBase {
-    const child = this._children.removeChild(id);
-    child.view.parent?.removeChild(child.view);
-    return child;
-  }
-
-  /** Notify attached components that node tree assembly is completed. */
-  notifyComponentsReady(): void {
-    this._components.runReadyHooks();
-  }
-
   protected setKind(kind: NodeKind): void {
     (this as NodeBase & { _kind?: NodeKind })._kind = kind;
   }
@@ -701,7 +452,7 @@ export abstract class NodeBase {
     let hasChild = false;
     for (const child of node._children.values()) {
       hasChild = true;
-      this.applyTintRecursive(child, color, amount);
+      this.applyTintRecursive(child.requireNode(NodeBase), color, amount);
     }
 
     if (hasChild && this.isKind(node, 'container')) {
@@ -714,7 +465,7 @@ export abstract class NodeBase {
     let hasChild = false;
     for (const child of node._children.values()) {
       hasChild = true;
-      this.clearTintRecursive(child);
+      this.clearTintRecursive(child.requireNode(NodeBase));
     }
 
     if (hasChild && this.isKind(node, 'container')) {

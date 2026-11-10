@@ -1,30 +1,14 @@
 import type { BuiltElement } from './BuildTypes';
-import type { DisplayNode } from '../nodes/types';
+import type { NodeBase } from '../NodeBase';
 import type { ElementConfig } from '../types';
-
-/**
- * Tracks built layout elements and owns the lookup index used by SceneLayout.
- */
 export class BuiltElementsRegistry {
   private readonly elements = new Map<string, BuiltElement>();
-
-  createProvisional(id: string, cfg: ElementConfig, parentId?: string): BuiltElement {
-    const built: BuiltElement = {
-      id,
-      object: {} as DisplayNode,
-      children: new Map(),
-      cfg,
-      ...(parentId ? { parentId } : {}),
-    };
+  add(id: string, cfg: ElementConfig, object: NodeBase, parentId?: string): BuiltElement {
+    if (this.elements.has(id)) throw new Error('Duplicate layout node: ' + id);
+    const built: BuiltElement = {id, cfg, object, children: new Map(), ...(parentId ? {parentId} : {})};
     this.elements.set(id, built);
     return built;
   }
-
-  entries(): IterableIterator<BuiltElement> {
-    return this.elements.values();
-  }
-
-  toMap(): Map<string, BuiltElement> {
-    return this.elements;
-  }
+  entries(): IterableIterator<BuiltElement> { return this.elements.values(); }
+  toMap(): Map<string, BuiltElement> { return this.elements; }
 }

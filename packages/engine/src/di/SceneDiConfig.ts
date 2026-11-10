@@ -13,4 +13,3 @@ export interface SceneDiConfig {
 export interface BuiltSceneDiEntry extends SceneDiEntry {
   readonly sceneKey: string;
 }
-

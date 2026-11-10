@@ -7,6 +7,6 @@ export class ParticlesRuntimeSystem implements RuntimeSystem {
   readonly phase = 'particles';
 
   update(dt: number, ctx: RuntimeUpdateContext): void {
-    ctx.engine.particles.tick(dt);
+    ctx.engine.rendering.tick(dt);
   }
 }

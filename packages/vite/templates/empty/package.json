@@ -3,7 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.12.0" },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "vite",
     "dev:crazygames": "vite --mode crazygames",
@@ -13,10 +15,22 @@
     "lint": "eslint . --max-warnings=0",
     "preview": "vite preview"
   },
-  "dependencies": { "@gamedevland/engine": "__ENGINE_VERSION__", "pixi.js": "^8.16.0" },
+  "dependencies": {
+    "@gamedevland/engine": "__ENGINE_VERSION__",
+    "pixi.js": "^8.16.0"
+  },
   "devDependencies": {
-    "@gamedevland/vite": "__TOOLING_VERSION__", "@types/node": "^24.7.0",
-    "typescript": "^5.9.3", "vite": "^8.0.16", "eslint": "^9.37.0",
-    "@eslint/js": "^9.37.0", "typescript-eslint": "^8.46.0"
+    "@gamedevland/vite": "__TOOLING_VERSION__",
+    "@types/node": "^24.7.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.16",
+    "eslint": "^9.37.0",
+    "@eslint/js": "^9.37.0",
+    "typescript-eslint": "^8.46.0"
+  },
+  "overrides": {
+    "archiver-utils": {
+      "glob": "14.0.2"
+    }
   }
 }

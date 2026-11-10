@@ -191,6 +191,19 @@ export class SchemaDecoder {
     };
   }
 
+  static strictObject<TShape extends DecoderShape>(shape: TShape): Decoder<InferObject<TShape>> {
+    const decode = this.object(shape);
+    return (input, context) => {
+      const record = input === undefined ? {} : this.record()(input, context);
+      for (const key of Object.keys(record)) {
+        if (!Object.prototype.hasOwnProperty.call(shape, key)) {
+          throw new Error(`${context.source}: unsupported property ${context.path}.${key}`);
+        }
+      }
+      return decode(record, context);
+    };
+  }
+
   static array<T>(itemDecoder: Decoder<T>): Decoder<readonly T[]> {
     return (input: unknown, context: DecodeContext): readonly T[] => {
       if (!Array.isArray(input)) {

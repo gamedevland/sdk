@@ -1,9 +1,10 @@
 import { BaseTypedComponent } from '@engine/layouts';
+
 import { SchemaDecoder } from '@engine/validation';
 
 import type { DragInputPhase } from '../drag/types';
 import type { InputEventBase } from '@engine/input';
-import type { Container } from '@engine/layouts';
+import { Container } from '@engine/renderers/pixi';
 import type { Decoder } from '@engine/validation';
 
 interface DragInputBridgeComponentConfig {
@@ -11,6 +12,7 @@ interface DragInputBridgeComponentConfig {
 }
 
 export class DragInputBridgeComponent extends BaseTypedComponent<DragInputBridgeComponentConfig, Container> {
+  protected readonly nodeType = Container;
   private static readonly CONFIG: Decoder<DragInputBridgeComponentConfig> = SchemaDecoder.object({
     eventType: SchemaDecoder.string({ nonEmpty: true }),
   });

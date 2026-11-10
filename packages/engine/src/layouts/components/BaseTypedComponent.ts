@@ -2,7 +2,7 @@ import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/er
 
 import { BaseComponent } from './BaseComponent';
 
-import type { NodeBase } from '../nodes/NodeBase';
+import type { NodeBase } from '../NodeBase';
 import type { Decoder } from '@engine/validation';
 
 export abstract class BaseTypedComponent<TConfig, TNode extends NodeBase = NodeBase> extends BaseComponent<TNode> {

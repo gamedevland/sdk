@@ -14,7 +14,7 @@ export class ElementPropsDecoder {
 
   constructor(private readonly sourceName: string) {}
 
-  readProps(cfg: ElementConfig): Readonly<Record<string, unknown>> {
+  readProps(cfg: ElementConfig<object>): Readonly<Record<string, unknown>> {
     const decoded = SchemaDecoder.decode(
       cfg,
       ElementPropsDecoder.ELEMENT_PROPS_DECODER,

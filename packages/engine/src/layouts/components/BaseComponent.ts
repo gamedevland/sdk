@@ -7,11 +7,12 @@
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 import { SchemaDecoder } from '@engine/validation';
 
-import type { NodeBase } from '../nodes/NodeBase';
+import type { NodeBase } from '@engine/layouts/NodeBase';
 import type { TweenHandle } from '@engine/tween/types';
 import type { Decoder } from '@engine/validation';
 
 export abstract class BaseComponent<TNode extends NodeBase = NodeBase> {
+  protected abstract readonly nodeType: abstract new (...args: never[]) => TNode;
   private _node: TNode | undefined;
   private _enabled = false;
   private _rawConfig: Readonly<Record<string, unknown>> = Object.freeze({});
@@ -58,7 +59,7 @@ export abstract class BaseComponent<TNode extends NodeBase = NodeBase> {
         details: { className: this.constructor.name, method: 'BaseComponent.node' },
       });
     }
-    return this._node;
+    return this._node.requireNode(this.nodeType);
   }
 
   /**
@@ -67,6 +68,7 @@ export abstract class BaseComponent<TNode extends NodeBase = NodeBase> {
    */
   init(node: TNode, data?: Record<string, unknown>): void {
     this.detaching = false;
+    node.requireNode(this.nodeType);
     this._node = node;
     this._rawConfig = Object.freeze({ ...(data ?? {}) });
     this.onBaseInit();
@@ -107,6 +109,8 @@ export abstract class BaseComponent<TNode extends NodeBase = NodeBase> {
   disable(): void {
     if (!this._enabled) return;
     this._enabled = false;
+    this.componentScopeVersion += 1;
+    this.killOwnedTweens();
     this.onDisable();
   }
 

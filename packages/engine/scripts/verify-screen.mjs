@@ -29,7 +29,14 @@ function setup(config) {
     },
   };
   const app = { canvas, renderer, stage: { scale: point, pivot: point, position: point } };
-  return { screen: new ScreenManager(app, { ...profiles, ...config }), canvas, resizeCalls };
+  return { screen: new ScreenManager({
+    canvas, get resolution() { return renderer.resolution; },
+    resize(snapshot, resolution) {
+      renderer.resize(snapshot.canvas.width, snapshot.canvas.height, resolution);
+      canvas.style.width = `${snapshot.viewport.width}px`;
+      canvas.style.height = `${snapshot.viewport.height}px`;
+    },
+  }, { ...profiles, ...config }), canvas, resizeCalls };
 }
 
 setViewport(640, 360, 2);

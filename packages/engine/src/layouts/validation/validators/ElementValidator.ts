@@ -42,7 +42,7 @@ export class ElementValidator extends RuleBasedValidator<ElementConfig> {
       (el, ctx) => {
         const v = el.children;
         if (v === undefined) return [];
-        if (el.type !== 'Container') {
+        if (el.type !== 'Container' && el.type !== 'Group') {
           return [{
             path: ctx.path + '.children',
             message: 'children are allowed only on Container nodes',

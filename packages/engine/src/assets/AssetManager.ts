@@ -240,4 +240,9 @@ export class AssetManager {
     }
     return bundle;
   }
+  async destroy(): Promise<void> {
+    await this.loadCoordinator.destroy();
+    this.store.destroy();
+  }
+
 }

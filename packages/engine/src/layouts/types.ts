@@ -9,7 +9,7 @@ import type {
   ValidationResult as StructuralValidationResult,
 } from '@engine/validation';
 
-export type LayoutFile = Record<string, ElementConfig>;
+export type LayoutFile<TProps extends object = Record<string, unknown>> = Record<string, ElementConfig<TProps>>;
 
 /**
  * Special directive has been replaced by `$include` and is resolved by IncludeExpander.
@@ -26,11 +26,11 @@ export type LayoutFile = Record<string, ElementConfig>;
  * - components: attachable behaviors (composition) instantiated on the node
  * - actions: named actions that can be triggered by input or lifecycle
  */
-export interface ElementConfig {
+export interface ElementConfig<TProps extends object = Record<string, unknown>> {
   type: string;
   extends?: string;
-  props?: DisplayConfig;
-  children?: Record<string, ElementConfig>;
+  props?: TProps;
+  children?: Record<string, ElementConfig<TProps>>;
   components?: Record<string, ComponentConfig>;
   actions?: Record<string, ActionConfig>;
 }
@@ -63,6 +63,10 @@ export interface DisplayConfig {
   asset?: string; // asset id for sprite/texture-based nodes
   width?: number; // width override
   height?: number; // height override
+  leftWidth?: number; // NineSliceSprite left border in texture pixels
+  rightWidth?: number; // NineSliceSprite right border in texture pixels
+  topHeight?: number; // NineSliceSprite top border in texture pixels
+  bottomHeight?: number; // NineSliceSprite bottom border in texture pixels
   text?: string; // text content for Text nodes
   style?: Record<string, unknown> | string; // style object or style preset key
   radius?: number; // corner radius for GraphicsRectProperty

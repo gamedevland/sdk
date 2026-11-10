@@ -17,4 +17,13 @@ export class TextureAssetResolver {
     this.cache.set(assetId, texture);
     return texture;
   }
+  destroy(): void {
+    const errors: unknown[] = [];
+    for (const texture of this.cache.values()) {
+      try { texture.destroy(true); } catch (error) { errors.push(error); }
+    }
+    this.cache.clear();
+    if (errors.length) throw new AggregateError(errors, 'Pixi texture cache disposal failed');
+  }
+
 }

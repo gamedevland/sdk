@@ -1,3 +1,5 @@
+import { PixiServices } from '@engine/renderers/pixi/PixiServices';
+import { NodeBase as PixiNode } from '@engine/layouts/nodes/NodeBase';
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 import { SchemaDecoder } from '@engine/validation';
 
@@ -25,6 +27,7 @@ export class PlayParticlesAction extends BaseTypedAction<
   PlayParticlesActionConfig,
   PlayParticlesActionInput
 > {
+  protected readonly nodeType = PixiNode;
   private static readonly SPACES = ['local', 'world'] as const;
 
   private static readonly CONFIG: Decoder<PlayParticlesActionConfig> = SchemaDecoder.object({
@@ -91,7 +94,7 @@ export class PlayParticlesAction extends BaseTypedAction<
       });
     }
 
-    this.node.engine.particles.emitBurst({
+    this.node.engine.di.get(PixiServices.ParticlesManager).emitBurst({
       preset: this.toPreset(preset, 'PlayParticlesAction.config.preset'),
       parent: this.node,
       position,

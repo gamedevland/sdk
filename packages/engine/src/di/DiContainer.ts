@@ -1,25 +1,10 @@
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
-import { SystemServices } from './tokens';
 
 import type { DiContainerInterface, Provider, Token } from './types';
 
 type ProviderRecord = Provider & { lifetime: 'singleton' | 'transient' };
 type NormalizedToken = string | symbol | (new (...args: unknown[]) => unknown);
-
-const SYSTEM_TOKEN_KEYS = new Set<string>([
-  SystemServices.AudioManager.key,
-  SystemServices.AssetManager.key,
-  SystemServices.ScreenManager.key,
-  SystemServices.EventBus.key,
-  SystemServices.Tweens.key,
-  SystemServices.InputManager.key,
-  SystemServices.ParticlesManager.key,
-  SystemServices.PhysicsManager.key,
-  SystemServices.RuntimePhysicsStepService.key,
-  SystemServices.ConfigStore.key,
-  SystemServices.TextureAssetResolver.key,
-]);
 
 export class DiContainer implements DiContainerInterface {
   private readonly parent: DiContainer | undefined;
@@ -41,6 +26,7 @@ export class DiContainer implements DiContainerInterface {
 
     this.assertRegistrationAllowed(key, normalized);
     this.providers.set(key, normalized);
+    this.singletons.delete(key);
   }
 
   get<T>(token: Token<T>): T {
@@ -117,7 +103,7 @@ export class DiContainer implements DiContainerInterface {
     const existingSource = existing.provider.source ?? 'any';
     const incomingSource = provider.source ?? 'any';
 
-    if (this.isSystemTokenKey(key)) {
+    if (existingSource === 'system') {
       throw EngineErrorFactory.conflict({
         code: EngineErrorCode.DiForbiddenOverride,
         subsystem: EngineSubsystem.Di,
@@ -144,10 +130,6 @@ export class DiContainer implements DiContainerInterface {
       return { provider: local, owner: this };
     }
     return this.parent?.getProviderByKey(key);
-  }
-
-  private isSystemTokenKey(key: NormalizedToken): boolean {
-    return typeof key === 'string' && SYSTEM_TOKEN_KEYS.has(key);
   }
 
   private normalizeToken<T>(token: Token<T>): NormalizedToken {

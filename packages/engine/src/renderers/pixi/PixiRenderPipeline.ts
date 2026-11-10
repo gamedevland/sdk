@@ -1,14 +1,13 @@
-import { Container, RenderTexture, Sprite, Texture, UPDATE_PRIORITY } from 'pixi.js';
+import { Container, RenderTexture, Sprite, Texture } from 'pixi.js';
 
 import type { ScreenConfig, ScreenStateSnapshot } from '@engine/screen';
-import type { Application, Ticker } from 'pixi.js';
+import type { Application } from 'pixi.js';
 
-export class EngineRenderPipeline {
+export class PixiRenderPipeline {
   private readonly sceneRoot = new Container();
   private readonly presentRoot = new Container();
   private readonly presentSprite = new Sprite(Texture.EMPTY);
   private renderTexture: RenderTexture | undefined;
-  private readonly renderBound = (_ticker: Ticker) => this.renderFrame();
 
   constructor(
     private readonly app: Application,
@@ -19,11 +18,11 @@ export class EngineRenderPipeline {
 
   init(snapshot: ScreenStateSnapshot): void {
     this.sync(snapshot);
-    this.app.ticker.add(this.renderBound, this, UPDATE_PRIORITY.LOW);
+
   }
 
   destroy(): void {
-    this.app.ticker.remove(this.renderBound, this);
+
     this.destroyRenderTexture();
     this.presentSprite.texture = Texture.EMPTY;
     this.presentRoot.destroy({ children: true });

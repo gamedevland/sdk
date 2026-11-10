@@ -41,7 +41,7 @@ legacy.setLang('ja');
 assert.equal(legacy.getLang(), 'en', 'Existing two-locale games must retain their supported subset');
 assert.throws(() => next.initialize({supportedLocales:['ru']}), /Default locale/);
 console.log('Locale preferences: aliases, precedence, persistence, fallback, events, blocked storage and compatibility passed.');
-const { Text } = await import('../packages/engine/dist/sdk.js');
+const { Text } = await import('../packages/engine/dist/renderers/pixi.js');
 const view = {
   text: 'A long translated label', style: { fontSize: 20, lineHeight: 0 },
   getLocalBounds() { return { width: Math.ceil(this.style.fontSize * this.text.length * .6), height: Math.ceil(this.style.fontSize * 1.4) + 1 }; },

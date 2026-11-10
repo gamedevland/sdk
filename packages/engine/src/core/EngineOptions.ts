@@ -9,6 +9,7 @@ import type { ScreenConfig } from '../screen/types';
  * These are minimal bootstrap options. Full game configuration is passed later to start().
  */
 export interface EngineOptions {
+  renderer: import("../rendering/types").RendererModule;
   /** DOM element to mount the PixiJS canvas into. */
   container: HTMLElement;
   /** Initial background color for the renderer; can be overridden in init(). */

@@ -2,7 +2,7 @@ import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/er
 
 import type { GameConfig } from './GameConfig';
 
-type EngineLifecycleState = 'created' | 'initialized' | 'mounted' | 'started';
+type EngineLifecycleState = 'created' | 'initializing' | 'initialized' | 'mounted' | 'starting' | 'started' | 'disposing' | 'disposed' | 'failed';
 
 interface EngineLifecycleManagerHooks {
   initializeRenderer(options: { background?: string }): Promise<void>;
@@ -12,13 +12,14 @@ interface EngineLifecycleManagerHooks {
 
 export class EngineLifecycleManager {
   private lifecycleState: EngineLifecycleState = 'created';
+  private pending: Promise<void> | undefined;
 
   constructor(private readonly hooks: EngineLifecycleManagerHooks) {}
 
   async init(options: { background?: string } = {}): Promise<void> {
     this.assertLifecycleState('created', 'Engine.init');
-    await this.hooks.initializeRenderer(options);
-    this.lifecycleState = 'initialized';
+    this.lifecycleState = 'initializing';
+    await this.runPending(() => this.hooks.initializeRenderer(options), 'initialized');
   }
 
   mount(container: HTMLElement): void {
@@ -29,8 +30,28 @@ export class EngineLifecycleManager {
 
   async start(config: GameConfig): Promise<void> {
     this.assertLifecycleState('mounted', 'Engine.start');
-    await this.hooks.startRuntime(config);
-    this.lifecycleState = 'started';
+    this.lifecycleState = 'starting';
+    await this.runPending(() => this.hooks.startRuntime(config), 'started');
+  }
+
+  async dispose(): Promise<void> {
+    this.lifecycleState = 'disposing';
+    await this.pending?.catch(() => undefined);
+    this.lifecycleState = 'disposed';
+  }
+
+  private async runPending(operation: () => Promise<void>, next: 'initialized' | 'started'): Promise<void> {
+    this.pending = Promise.resolve().then(operation);
+    try {
+      await this.pending;
+      if (this.lifecycleState === 'disposing' || this.lifecycleState === 'disposed') {
+        throw new Error('Engine was disposed during lifecycle operation');
+      }
+      this.lifecycleState = next;
+    } catch (error) {
+      if (this.lifecycleState !== 'disposing' && this.lifecycleState !== 'disposed') this.lifecycleState = 'failed';
+      throw error;
+    }
   }
 
   private assertLifecycleState(

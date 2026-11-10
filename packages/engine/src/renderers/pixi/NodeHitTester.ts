@@ -1,6 +1,7 @@
-import HitTestUtils from './HitTestUtils';
+import { NodeBase as PixiNode } from '../../layouts/nodes/NodeBase';
+import HitTestUtils from './PixiHitTestUtils';
 
-import type { HitTarget } from './types';
+import type { HitTarget } from '../../input/types';
 import type { SceneLayout } from '@engine/layouts';
 import type { NodeBase } from '@engine/layouts';
 
@@ -38,7 +39,7 @@ export class NodeHitTester {
   /**
    * @param getActiveLayout Supplier of the currently active SceneLayout (can return undefined)
    */
-  constructor(private getActiveLayout: () => SceneLayout | undefined) {}
+  constructor(private getActiveLayout: () => SceneLayout | undefined, private readonly getDisplayRoot?: () => PixiNode['view']) {}
 
   /**
    * Performs hit-testing in virtual coordinates (local to the stage/root container).
@@ -53,7 +54,7 @@ export class NodeHitTester {
     this.ensureSynced(layout);
     // Recompute reference counts every call for simplicity (flat routing, few interactive nodes)
     this.recomputeRefCounts();
-    const root = layout.root;
+    const root = this.getDisplayRoot?.() ?? layout.root.requireNode(PixiNode).view;
     // Resolve stage/top container each call for clarity
     let top: DisplayTreeNode = root as DisplayTreeNode;
     while (top?.parent) top = top.parent;
@@ -210,45 +211,13 @@ export class NodeHitTester {
     nodeId: string,
   ): DisplayTreeNode | undefined {
     if (!layout) return undefined;
-    try {
-      const node = layout.getNode(nodeId) as unknown;
-      if (!node || typeof node !== 'object') return undefined;
-      const view = (node as { view?: unknown }).view;
-      return view && typeof view === 'object' ? (view as DisplayTreeNode) : undefined;
-    } catch {
-      const dynamicView = this.resolveDynamicNodeView(layout, nodeId);
-      if (dynamicView) {
-        return dynamicView;
-      }
-      return undefined;
-    }
-  }
-
-  private resolveDynamicNodeView(layout: SceneLayout, nodeId: string): DisplayTreeNode | undefined {
-    const dynamicNode = this.resolveRuntimeNode(layout, nodeId);
-    if (!dynamicNode) {
-      return undefined;
-    }
-    const view = dynamicNode.view;
-    return view && typeof view === 'object' ? (view as DisplayTreeNode) : undefined;
+    const node = this.resolveRuntimeNode(layout, nodeId);
+    return node instanceof PixiNode ? node.view : undefined;
   }
 
   private resolveRuntimeNode(layout: SceneLayout, nodeId: string): NodeBase | undefined {
-    try {
-      return layout.getNode<NodeBase>(nodeId);
-    } catch {
-      try {
-        const rootNode = layout.getNode<NodeBase>('root');
-        if (nodeId === 'root') {
-          return rootNode;
-        }
-        if (nodeId.startsWith('root.')) {
-          return rootNode.getChildNode(nodeId.slice('root.'.length));
-        }
-        return rootNode.getChildNode(nodeId);
-      } catch {
-        return undefined;
-      }
-    }
+    const direct = layout.findNode(nodeId);
+    if (direct) return direct;
+    try { return layout.root.getChildNode(nodeId); } catch { return undefined; }
   }
 }

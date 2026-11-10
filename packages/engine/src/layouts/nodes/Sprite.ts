@@ -14,7 +14,7 @@ import { NodeBase } from './NodeBase';
 import type { SpriteNode, DisplayNode } from './types';
 import type { AssetManager } from '../../assets/AssetManager';
 import type { AssetId } from '../../assets/types';
-import type { ElementConfig } from '../types';
+import type { ElementConfig } from '@engine/renderers/pixi/types';
 
 export interface SpriteTextureSize {
   readonly width: number;

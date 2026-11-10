@@ -1,0 +1,689 @@
+--- a/eslint.config.js
++++ b/eslint.config.js
+@@ -75,7 +75,7 @@
+         {
+           patterns: [
+             {
+-              group: ['@gamedevland/engine/*/*'],
++              group: ['@gamedevland/engine/*/*', '!@gamedevland/engine/renderers/pixi'],
+               message:
+                 'Deep engine imports are internal. Use stable public barrels: @gamedevland/engine or @gamedevland/engine/<subsystem>.',
+             },
+--- a/game/src/config/AiDefenderGlobalDi.ts
++++ b/game/src/config/AiDefenderGlobalDi.ts
+@@ -1,7 +1,6 @@
+ import { PanelReveal } from '@gamedevland/cyber-ui-sdk';
+ import { PlatformStorageAdapter } from '@gamedevland/engine/configs';
+ import { DiTokens, GlobalDiDefinition, SystemServices } from '@gamedevland/engine/di';
+-import { Container, Graphics, Text } from '@gamedevland/engine/layouts';
+ 
+ import { BattleAds } from '../features/battle/BattleAds';
+ import { BattleProfile } from '../features/battle/BattleProfile';
+@@ -27,12 +26,10 @@
+ 
+ import { AiDefenderServices } from './AiDefenderServices';
+ 
+-import type { CommandsGroup, ComponentsGroup, ElementFactoriesGroup, ValuesGroupRegistrar } from '@gamedevland/engine/di';
++import type { CommandsGroup, ComponentsGroup, ValuesGroupRegistrar } from '@gamedevland/engine/di';
+ 
+ export class AiDefenderGlobalDi extends GlobalDiDefinition {
+-  protected override registerElements(group: ElementFactoriesGroup): void {
+-    group.add('Container', Container).add('Graphics', Graphics).add('Text', Text);
+-  }
++  protected override registerElements(): void {}
+ 
+   protected override registerComponents(group: ComponentsGroup): void {
+     group.add('LanguagePicker', LanguagePicker).add('BootSignal', BootSignal).add('CircuitBackground', CircuitBackground).add('CombatGraphics', CombatGraphics)
+--- a/game/src/config/game.config.ts
++++ b/game/src/config/game.config.ts
+@@ -1,3 +1,5 @@
++import { PixiRendererModule } from '@gamedevland/engine/renderers/pixi';
++
+ import { BootSceneDefinition } from '../scenes/boot/configs/BootSceneDefinition';
+ import { GameSceneDefinition } from '../scenes/game/configs/GameSceneDefinition';
+ import { HubSceneDefinition } from '../scenes/hub/configs/HubSceneDefinition';
+@@ -27,6 +29,7 @@
+ 
+   static readonly config: GameConfig = {
+     system: {
++      renderer: new PixiRendererModule(),
+       canvasBackground: '#070d19',
+       boot: { autoLoadingFinished: false, configs: { engineStartBundles: ['configs', 'locales'] } },
+       audio: { volumeConfigId: 'json/configs/audio/sounds-volumes.json' },
+--- a/game/src/features/motion/IdleGlitch.ts
++++ b/game/src/features/motion/IdleGlitch.ts
+@@ -1,11 +1,11 @@
+ import { SurfaceGlitch } from '@gamedevland/cyber-ui';
+ import { ToolkitComponent } from '@gamedevland/cyber-ui-sdk';
++import { Container, type Graphics } from '@gamedevland/engine/renderers/pixi';
+ import { SchemaDecoder as S } from '@gamedevland/engine/validation';
+ 
+ import { IdleGlitchClock } from './IdleGlitchClock';
+ import { MotionConfig } from './MotionConfig';
+ 
+-import type { Container, Graphics } from '@gamedevland/engine/layouts';
+ import type { InferDecoded } from '@gamedevland/engine/validation';
+ 
+ export type GlitchTarget = {
+@@ -19,6 +19,7 @@
+ });
+ 
+ export class IdleGlitch extends ToolkitComponent<InferDecoded<typeof decoder>, Container> {
++  protected readonly nodeType = Container;
+   private static clock?: IdleGlitchClock;
+   protected readonly configDecoder = decoder;
+   private effect?: SurfaceGlitch;
+--- a/game/src/features/motion/MotionConfig.ts
++++ b/game/src/features/motion/MotionConfig.ts
+@@ -3,7 +3,7 @@
+ import { SchemaDecoder as S } from '@gamedevland/engine/validation';
+ 
+ import type { ConfigStore } from '@gamedevland/engine/configs';
+-import type { NodeBase } from '@gamedevland/engine/layouts';
++import type { NodeBase } from '@gamedevland/engine/renderers/pixi';
+ import type { InferDecoded } from '@gamedevland/engine/validation';
+ 
+ const duration = S.number({ min: 1, max: 2000, integer: true });
+--- a/game/src/scenes/boot/components/BootSignal.ts
++++ b/game/src/scenes/boot/components/BootSignal.ts
+@@ -1,5 +1,6 @@
+ import { SignalBrackets, TextEcho, TriangleLoader } from '@gamedevland/cyber-ui';
+ import { ToolkitComponent } from '@gamedevland/cyber-ui-sdk';
++import { Container } from '@gamedevland/engine/renderers/pixi';
+ import { SchemaDecoder as S } from '@gamedevland/engine/validation';
+ 
+ import { AiDefenderServices } from '../../../config/AiDefenderServices';
+@@ -9,7 +10,6 @@
+ 
+ import type { GameLocale } from '../../../features/localization/GameLocale';
+ import type { CyberColors } from '../../game/components/CyberTheme';
+-import type { Container } from '@gamedevland/engine/layouts';
+ import type { InferDecoded } from '@gamedevland/engine/validation';
+ 
+ const positive = S.number({ min: .01 });
+@@ -44,6 +44,7 @@
+   }),
+ });
+ export class BootSignal extends ToolkitComponent<InferDecoded<typeof decoder>, Container> {
++  protected readonly nodeType = Container;
+   private get locale(): GameLocale { return this.node.engine.getRequiredActiveSceneDi().get(AiDefenderServices.Locale); }
+ 
+   protected readonly configDecoder = decoder;
+--- a/game/src/scenes/game/components/ArtPen.ts
++++ b/game/src/scenes/game/components/ArtPen.ts
+@@ -1,4 +1,4 @@
+-import type { Graphics } from '@gamedevland/engine/layouts';
++import type { Graphics } from '@gamedevland/engine/renderers/pixi';
+ import type { FillInput } from 'pixi.js';
+ 
+ export class ArtPen {
+--- a/game/src/scenes/game/components/BattleHud.ts
++++ b/game/src/scenes/game/components/BattleHud.ts
+@@ -1,5 +1,6 @@
+ import { TerminalGlass, TerminalUi } from '@gamedevland/cyber-ui';
+ import { BaseComponent } from '@gamedevland/engine/layouts';
++import { Container } from '@gamedevland/engine/renderers/pixi';
+ 
+ import { AiDefenderServices } from '../../../config/AiDefenderServices';
+ import { MotionConfig } from '../../../features/motion/MotionConfig';
+@@ -12,9 +13,9 @@
+ import type { CyberColors } from './CyberTheme';
+ import type { GameLocale } from '../../../features/localization/GameLocale';
+ import type { BattleSessionService } from '../services/BattleSessionService';
+-import type { Container } from '@gamedevland/engine/layouts';
+ 
+ export class BattleHud extends BaseComponent<Container> {
++  protected readonly nodeType = Container;
+   private get locale(): GameLocale { return this.node.engine.getRequiredActiveSceneDi().get(AiDefenderServices.Locale); }
+ 
+   private session?: BattleSessionService;
+--- a/game/src/scenes/game/components/BattleMotion.ts
++++ b/game/src/scenes/game/components/BattleMotion.ts
+@@ -1,5 +1,6 @@
+ import { FaultGlyph, TerminalSweep } from '@gamedevland/cyber-ui';
+ import { BaseComponent } from '@gamedevland/engine/layouts';
++import { Container, type Graphics } from '@gamedevland/engine/renderers/pixi';
+ 
+ import { BattleSoundscape } from '../../../features/audio/BattleSoundscape';
+ import { GameAudio } from '../../../features/audio/GameAudio';
+@@ -16,12 +17,12 @@
+ import type { BattlePhase, Impact } from '../../../features/battle/BattleState';
+ import type { MotionSpec } from '../../../features/motion/MotionConfig';
+ import type { BattleSessionService } from '../services/BattleSessionService';
+-import type { Container, Graphics } from '@gamedevland/engine/layouts';
+ 
+ type AgentCue = { readonly id: AgentId; readonly slot: number; readonly before: number; readonly at: number; readonly kind: 'deploy' | 'patch' | 'move' };
+ type AgentView = { readonly slot: number; readonly rank: number };
+ 
+ export class BattleMotion extends BaseComponent<Container> {
++  protected readonly nodeType = Container;
+   private session?: BattleSessionService;
+   private theme?: CyberColors;
+   private motion?: MotionSpec;
+--- a/game/src/scenes/game/components/BattleOverlay.ts
++++ b/game/src/scenes/game/components/BattleOverlay.ts
+@@ -1,5 +1,6 @@
+ import { PanelSurface, TerminalGlass, TerminalSweep, TerminalUi } from '@gamedevland/cyber-ui';
+ import { BaseComponent } from '@gamedevland/engine/layouts';
++import { Container } from '@gamedevland/engine/renderers/pixi';
+ 
+ import { AiDefenderServices } from '../../../config/AiDefenderServices';
+ import { GameAudio } from '../../../features/audio/GameAudio';
+@@ -24,7 +25,6 @@
+ import type { MotionSpec } from '../../../features/motion/MotionConfig';
+ import type { BattleSessionService } from '../services/BattleSessionService';
+ import type { TerminalIcon } from '@gamedevland/cyber-ui';
+-import type { Container } from '@gamedevland/engine/layouts';
+ import type { TweenHandle } from '@gamedevland/engine/tween';
+ import type { InferDecoded } from '@gamedevland/engine/validation';
+ 
+@@ -41,6 +41,7 @@
+ };
+ 
+ export class BattleOverlay extends BaseComponent<Container> {
++  protected readonly nodeType = Container;
+   private get locale(): GameLocale { return this.node.engine.getRequiredActiveSceneDi().get(AiDefenderServices.Locale); }
+ 
+   private session?: BattleSessionService;
+--- a/game/src/scenes/game/components/CircuitBackground.ts
++++ b/game/src/scenes/game/components/CircuitBackground.ts
+@@ -1,4 +1,5 @@
+ import { BaseTypedComponent } from '@gamedevland/engine/layouts';
++import { Container } from '@gamedevland/engine/renderers/pixi';
+ import { SchemaDecoder as S } from '@gamedevland/engine/validation';
+ 
+ import { AiDefenderServices } from '../../../config/AiDefenderServices';
+@@ -12,7 +13,6 @@
+ 
+ import type { CyberColors } from './CyberTheme';
+ import type { SectorProfile } from '../../ui/SectorVisuals';
+-import type { Container } from '@gamedevland/engine/layouts';
+ import type { InferDecoded } from '@gamedevland/engine/validation';
+ 
+ const decoder = S.object({ mode: S.optional(S.enumOf(['hub', 'battle'] as const)) });
+@@ -20,6 +20,7 @@
+ type Route = readonly Point[];
+ 
+ export class CircuitBackground extends BaseTypedComponent<InferDecoded<typeof decoder>, Container> {
++  protected readonly nodeType = Container;
+   protected readonly configDecoder = decoder;
+   private colors?: CyberColors;
+   private sector?: SectorProfile;
+--- a/game/src/scenes/game/components/CombatGraphics.ts
++++ b/game/src/scenes/game/components/CombatGraphics.ts
+@@ -1,5 +1,7 @@
+ import { BinaryField } from '@gamedevland/cyber-ui';
+ import { BaseComponent } from '@gamedevland/engine/layouts';
++import { PixiServices } from '@gamedevland/engine/renderers/pixi';
++import { Container, type Graphics } from '@gamedevland/engine/renderers/pixi';
+ 
+ import { MotionConfig } from '../../../features/motion/MotionConfig';
+ import { BattleProjection } from '../BattleProjection';
+@@ -19,9 +21,9 @@
+ import type { CyberColors } from './CyberTheme';
+ import type { MotionSpec } from '../../../features/motion/MotionConfig';
+ import type { BattleSessionService } from '../services/BattleSessionService';
+-import type { Container, Graphics } from '@gamedevland/engine/layouts';
+ 
+ export class CombatGraphics extends BaseComponent<Container> {
++  protected readonly nodeType = Container;
+   private session?: BattleSessionService;
+   private colors?: CyberColors;
+   private roster?: EnemyRoster;
+@@ -39,7 +41,7 @@
+     const run = this.session.run;
+     this.roster = new EnemyRoster(run.sector, this.colors, run.loadout.enemySizeScale ?? 1);
+     const looks = this.roster.forSpawns(run.plannedSpawns());
+-    this.atlas = new EnemyAtlas(this.node.engine.app.renderer, looks, this.colors.inset, this.colors.text);
++    this.atlas = new EnemyAtlas(this.node.engine.di.get(PixiServices.TextureGenerator), looks, this.colors.inset, this.colors.text);
+     this.sprites = new EnemySprites(this.node.getChildContainer('enemyBodies').view, this.node.engine.assets);
+     this.plasma = new PlasmaBeams(this.node.getChildGraphics('combatFx').view, this.colors);
+     this.motion = MotionConfig.read(this.node);
+--- a/game/src/scenes/game/components/CoreIntegrityGlitch.ts
++++ b/game/src/scenes/game/components/CoreIntegrityGlitch.ts
+@@ -1,7 +1,7 @@
+ import { SeededRandom } from '../../../features/battle/SeededRandom';
+ 
+ import type { CyberColors } from './CyberTheme';
+-import type { Graphics } from '@gamedevland/engine/layouts';
++import type { Graphics } from '@gamedevland/engine/renderers/pixi';
+ 
+ type Track = { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+ 
+--- a/game/src/scenes/game/components/CyberTheme.ts
++++ b/game/src/scenes/game/components/CyberTheme.ts
+@@ -2,7 +2,7 @@
+ import { SystemServices } from '@gamedevland/engine/di';
+ import { SchemaDecoder as S } from '@gamedevland/engine/validation';
+ 
+-import type { NodeBase } from '@gamedevland/engine/layouts';
++import type { NodeBase } from '@gamedevland/engine/renderers/pixi';
+ import type { InferDecoded } from '@gamedevland/engine/validation';
+ 
+ const color = S.number({ integer: true, min: 0, max: 0xffffff });
+--- a/game/src/scenes/game/components/DefeatGlitch.ts
++++ b/game/src/scenes/game/components/DefeatGlitch.ts
+@@ -1,5 +1,6 @@
+ import { SignalLost } from '@gamedevland/cyber-ui';
+ import { BaseComponent } from '@gamedevland/engine/layouts';
++import { Container } from '@gamedevland/engine/renderers/pixi';
+ 
+ import { AiDefenderServices } from '../../../config/AiDefenderServices';
+ import { MotionConfig } from '../../../features/motion/MotionConfig';
+@@ -9,9 +10,9 @@
+ import type { CyberColors } from './CyberTheme';
+ import type { GameLocale } from '../../../features/localization/GameLocale';
+ import type { MotionSpec } from '../../../features/motion/MotionConfig';
+-import type { Container } from '@gamedevland/engine/layouts';
+ 
+ export class DefeatGlitch extends BaseComponent<Container> {
++  protected readonly nodeType = Container;
+   private get locale(): GameLocale { return this.node.engine.getRequiredActiveSceneDi().get(AiDefenderServices.Locale); }
+ 
+   private theme?: CyberColors;
+--- a/game/src/scenes/game/components/DockInput.ts
++++ b/game/src/scenes/game/components/DockInput.ts
+@@ -1,4 +1,5 @@
+ import { BaseComponent } from '@gamedevland/engine/layouts';
++import { Container } from '@gamedevland/engine/renderers/pixi';
+ 
+ import { BattleProjection } from '../BattleProjection';
+ import { BattleEvents } from '../configs/BattleEvents';
+@@ -10,9 +11,9 @@
+ import type { CyberColors } from './CyberTheme';
+ import type { BattleSessionService } from '../services/BattleSessionService';
+ import type { InputEventBase } from '@gamedevland/engine/input';
+-import type { Container } from '@gamedevland/engine/layouts';
+ 
+ export class DockInput extends BaseComponent<Container> {
++  protected readonly nodeType = Container;
+   private session?: BattleSessionService;
+   private colors?: CyberColors;
+   private readonly off: (() => void)[] = [];
+--- a/game/src/scenes/game/components/EnemyArt.ts
++++ b/game/src/scenes/game/components/EnemyArt.ts
+@@ -4,7 +4,7 @@
+ 
+ import type { EnemyCanvas, EnemyFace, EnemyModel, EnemyPalette, EnemyPart } from './enemies/EnemyInk';
+ import type { EnemyLook } from './EnemyRoster';
+-import type { Graphics } from '@gamedevland/engine/layouts';
++import type { Graphics } from '@gamedevland/engine/renderers/pixi';
+ import type { FillInput } from 'pixi.js';
+ 
+ export class EnemyArt {
+--- a/game/src/scenes/game/components/EnemyGlitch.ts
++++ b/game/src/scenes/game/components/EnemyGlitch.ts
+@@ -1,4 +1,5 @@
+ import { BaseComponent } from '@gamedevland/engine/layouts';
++import { Container, type Graphics } from '@gamedevland/engine/renderers/pixi';
+ 
+ import { MotionConfig } from '../../../features/motion/MotionConfig';
+ 
+@@ -11,13 +12,13 @@
+ import type { Impact, Threat } from '../../../features/battle/BattleState';
+ import type { MotionSpec } from '../../../features/motion/MotionConfig';
+ import type { BattleProjection } from '../BattleProjection';
+-import type { Container, Graphics } from '@gamedevland/engine/layouts';
+ 
+ type View = Graphics['view'];
+ type Cue = { readonly started: number; readonly impact: Impact };
+ type Phase = 'hit' | 'death';
+ 
+ export class EnemyGlitch extends BaseComponent<Container> {
++  protected readonly nodeType = Container;
+   private duration = 0;
+   private spawnSeconds = 0;
+   private limit = 0;
+--- a/game/src/scenes/game/components/PlasmaBeams.ts
++++ b/game/src/scenes/game/components/PlasmaBeams.ts
+@@ -5,7 +5,7 @@
+ import type { PlasmaMaterial } from './PlasmaTexture';
+ import type { Attack, Front } from '../../../features/battle/BattleState';
+ import type { BattleProjection } from '../BattleProjection';
+-import type { Graphics } from '@gamedevland/engine/layouts';
++import type { Graphics } from '@gamedevland/engine/renderers/pixi';
+ 
+ /** Draws GPU-generated plasma through the SDK's existing Graphics texture path. */
+ export class PlasmaBeams {
+--- a/game/src/scenes/game/components/WeaponGraphics.ts
++++ b/game/src/scenes/game/components/WeaponGraphics.ts
+@@ -1,7 +1,7 @@
+ import type { CyberColors } from './CyberTheme';
+ import type { Attack, Impact, Shot, Zone } from '../../../features/battle/BattleState';
+ import type { BattleProjection } from '../BattleProjection';
+-import type { Graphics } from '@gamedevland/engine/layouts';
++import type { Graphics } from '@gamedevland/engine/renderers/pixi';
+ 
+ type Ink = Graphics['view'];
+ 
+--- a/game/src/scenes/game/components/agents/AgentArt.ts
++++ b/game/src/scenes/game/components/agents/AgentArt.ts
+@@ -11,7 +11,7 @@
+ 
+ import type { AgentModel, AgentPalette } from './AgentInk';
+ import type { AgentId } from '../../../../features/battle/BattleRules';
+-import type { Graphics } from '@gamedevland/engine/layouts';
++import type { Graphics } from '@gamedevland/engine/renderers/pixi';
+ 
+ export class AgentArt {
+   private static readonly designs = {
+--- a/game/src/scenes/game/components/enemies/EnemyAtlas.ts
++++ b/game/src/scenes/game/components/enemies/EnemyAtlas.ts
+@@ -8,7 +8,7 @@
+ 
+ import type { EnemyFace, EnemyPart } from './EnemyInk';
+ import type { EnemyLook } from '../EnemyRoster';
+-import type { Renderer } from 'pixi.js';
++import type { PixiTextureGenerator } from '@gamedevland/engine/renderers/pixi';
+ 
+ type EnemyImage = {
+   readonly body: Texture;
+@@ -41,8 +41,9 @@
+   private readonly frames = new Map<EnemyLook, readonly [EnemyFrame, EnemyFrame]>();
+   private readonly views: Texture[] = [];
+   private readonly texture: Texture;
++  private readonly codeTexture: Texture;
+ 
+-  constructor(renderer: Renderer, looks: readonly EnemyLook[], dark: number, flash?: number) {
++  constructor(renderer: PixiTextureGenerator, looks: readonly EnemyLook[], dark: number, flash?: number) {
+     const combat = flash !== undefined;
+     const unique = new Map(looks.map(look => [EnemyAtlas.key(look), look] as const));
+     const models = [...unique.values()].map(look => {
+@@ -55,6 +56,7 @@
+     const columns = Math.max(1, Math.ceil(Math.sqrt(tiles)));
+     const rows = Math.max(1, Math.ceil(tiles / columns));
+     const code = EnemyCode.bake(renderer, combat ? 1 : 2);
++    this.codeTexture = code;
+     const drawing = new Graphics();
+     const pen = new ArtPen(drawing);
+     try {
+@@ -90,8 +92,8 @@
+         antialias: true,
+       });
+     } finally {
+-      drawing.destroy();
+-      code.destroy(true);
++      drawing.destroy({ context: true });
++
+     }
+ 
+     let index = 0;
+@@ -139,6 +141,7 @@
+     this.views.length = 0;
+     this.frames.clear();
+     this.texture.destroy(true);
++    this.codeTexture.destroy(true);
+   }
+ 
+   private frame(index: number, columns: number): EnemyImage {
+--- a/game/src/scenes/game/components/enemies/EnemyCode.ts
++++ b/game/src/scenes/game/components/enemies/EnemyCode.ts
+@@ -1,6 +1,7 @@
+ import { Graphics, Rectangle } from 'pixi.js';
+ 
+-import type { Renderer, Texture } from 'pixi.js';
++import type { PixiTextureGenerator } from '@gamedevland/engine/renderers/pixi';
++import type { Texture } from 'pixi.js';
+ 
+ export class EnemyCode {
+   private static readonly width = 64;
+@@ -21,7 +22,7 @@
+     g.fill(color);
+   }
+ 
+-  static bake(renderer: Renderer, cellScale: number): Texture {
++  static bake(renderer: PixiTextureGenerator, cellScale: number): Texture {
+     const g = new Graphics();
+     try {
+       g.rect(0, 0, this.width, this.height).fill(0x071825);
+--- a/game/src/scenes/game/components/enemies/EnemySprites.ts
++++ b/game/src/scenes/game/components/enemies/EnemySprites.ts
+@@ -1,7 +1,7 @@
+-import { Sprite } from '@gamedevland/engine/layouts';
++import { Sprite } from '@gamedevland/engine/renderers/pixi';
+ 
+ import type { AssetManager } from '@gamedevland/engine/assets';
+-import type { Container } from '@gamedevland/engine/layouts';
++import type { Container } from '@gamedevland/engine/renderers/pixi';
+ import type { Texture } from 'pixi.js';
+ 
+ type SpriteView = Sprite['view'];
+--- a/game/src/scenes/hub/components/AgentSignal.ts
++++ b/game/src/scenes/hub/components/AgentSignal.ts
+@@ -2,7 +2,7 @@
+ 
+ import type { MotionSpec } from '../../../features/motion/MotionConfig';
+ import type { CyberColors } from '../../game/components/CyberTheme';
+-import type { Container } from '@gamedevland/engine/layouts';
++import type { Container } from '@gamedevland/engine/renderers/pixi';
+ 
+ /** Shared full-tile binary field, beneath the portrait and lock layers. */
+ export class AgentSignal {
+--- a/game/src/scenes/hub/components/HubArtwork.ts
++++ b/game/src/scenes/hub/components/HubArtwork.ts
+@@ -3,7 +3,7 @@
+ import type { EnemyId } from '../../../features/battle/BattleRules';
+ import type { CyberColors } from '../../game/components/CyberTheme';
+ import type { SectorProfile, SectorVisuals } from '../../ui/SectorVisuals';
+-import type { Graphics } from '@gamedevland/engine/layouts';
++import type { Graphics } from '@gamedevland/engine/renderers/pixi';
+ 
+ export type HubRadar = { readonly cx: number; readonly cy: number; readonly radius: number };
+ export type RadarBeam = { readonly angle: number; readonly direction: number; readonly width: number; readonly msPerRadian: number };
+--- a/game/src/scenes/hub/components/HubConsole.ts
++++ b/game/src/scenes/hub/components/HubConsole.ts
+@@ -1,5 +1,7 @@
+ import { ButtonPrice, ButtonSurface, PanelSurface, TerminalGlass, TerminalSweep, TerminalUi } from '@gamedevland/cyber-ui';
+ import { BaseComponent } from '@gamedevland/engine/layouts';
++import { PixiServices } from '@gamedevland/engine/renderers/pixi';
++import { Container, type Graphics } from '@gamedevland/engine/renderers/pixi';
+ 
+ import { AiDefenderServices } from '../../../config/AiDefenderServices';
+ import { GameAudio } from '../../../features/audio/GameAudio';
+@@ -30,7 +32,6 @@
+ import type { SectorProfile } from '../../ui/SectorVisuals';
+ import type { HubGuidanceTarget } from '../services/HubGuidance';
+ import type { TerminalIcon } from '@gamedevland/cyber-ui';
+-import type { Container, Graphics } from '@gamedevland/engine/layouts';
+ import type { TweenHandle } from '@gamedevland/engine/tween';
+ import type { InferDecoded } from '@gamedevland/engine/validation';
+ 
+@@ -53,6 +54,7 @@
+ type Paint = { readonly s: HubSession; readonly t: CyberColors; readonly g: Graphics['view']; readonly f: Frame; readonly now: number };
+ 
+ export class HubConsole extends BaseComponent<Container> {
++  protected readonly nodeType = Container;
+   private get locale(): GameLocale { return this.node.engine.getRequiredActiveSceneDi().get(AiDefenderServices.Locale); }
+ 
+   private static readonly nav = [
+@@ -113,7 +115,7 @@
+     this.colors = CyberTheme.read(this.node);
+     this.motion = MotionConfig.read(this.node);
+     this.radarContacts = new HubRadarContacts(this.node.getChildContainer('pagePanel.radarContacts').view,
+-      this.node.engine.assets, this.node.engine.app.renderer, this.colors);
++      this.node.engine.assets, this.node.engine.di.get(PixiServices.TextureGenerator), this.colors);
+     for (const id of HubConsole.controls) {
+       this.off.push(this.node.getChildGraphics(`${id}.surface`).input.onTap((event) => {
+         const intent = this.intents.get(id);
+--- a/game/src/scenes/hub/components/HubRadarContacts.ts
++++ b/game/src/scenes/hub/components/HubRadarContacts.ts
+@@ -9,8 +9,8 @@
+ import type { EnemyLook } from '../../game/components/EnemyRoster';
+ import type { SectorProfile } from '../../ui/SectorVisuals';
+ import type { AssetManager } from '@gamedevland/engine/assets';
+-import type { Container } from '@gamedevland/engine/layouts';
+-import type { Renderer } from 'pixi.js';
++import type { Container } from '@gamedevland/engine/renderers/pixi';
++import type { PixiTextureGenerator } from '@gamedevland/engine/renderers/pixi';
+ 
+ type Contact = { readonly angle: number; readonly x: number; readonly y: number; readonly look: EnemyLook };
+ 
+@@ -21,7 +21,7 @@
+   private atlas?: EnemyAtlas;
+   private sector?: number;
+ 
+-  constructor(layer: Container['view'], assets: AssetManager, private readonly renderer: Renderer, private readonly colors: CyberColors) {
++  constructor(layer: Container['view'], assets: AssetManager, private readonly renderer: PixiTextureGenerator, private readonly colors: CyberColors) {
+     this.sprites = new EnemySprites(layer, assets);
+   }
+ 
+--- a/game/src/scenes/hub/components/LockedSignal.ts
++++ b/game/src/scenes/hub/components/LockedSignal.ts
+@@ -4,7 +4,7 @@
+ 
+ import type { GameLocale } from '../../../features/localization/GameLocale';
+ import type { CyberColors } from '../../game/components/CyberTheme';
+-import type { Container } from '@gamedevland/engine/layouts';
++import type { Container } from '@gamedevland/engine/renderers/pixi';
+ 
+ export class LockedSignal {
+   static draw(node: Container, t: CyberColors, area: { x: number; y: number; w: number; h: number },
+--- a/game/src/scenes/hub/components/ResearchSignal.ts
++++ b/game/src/scenes/hub/components/ResearchSignal.ts
+@@ -2,7 +2,7 @@
+ 
+ import type { MotionSpec } from '../../../features/motion/MotionConfig';
+ import type { CyberColors } from '../../game/components/CyberTheme';
+-import type { Container } from '@gamedevland/engine/layouts';
++import type { Container } from '@gamedevland/engine/renderers/pixi';
+ 
+ export class ResearchSignal {
+   static draw(node: Container, t: CyberColors, motion: MotionSpec, w: number, h: number,
+--- a/game/src/scenes/ui/LanguagePicker.ts
++++ b/game/src/scenes/ui/LanguagePicker.ts
+@@ -1,5 +1,6 @@
+ import { TerminalGlass, TerminalUi } from '@gamedevland/cyber-ui';
+ import { BaseTypedComponent } from '@gamedevland/engine/layouts';
++import { Container } from '@gamedevland/engine/renderers/pixi';
+ import { SchemaDecoder as S } from '@gamedevland/engine/validation';
+ 
+ import { AiDefenderServices } from '../../config/AiDefenderServices';
+@@ -12,7 +13,6 @@
+ 
+ import { ControlKeys } from './ControlKeys';
+ 
+-import type { Container } from '@gamedevland/engine/layouts';
+ import type { InferDecoded } from '@gamedevland/engine/validation';
+ 
+ const decoder = S.object({
+@@ -25,6 +25,7 @@
+ 
+ /** Shared, keyboard-accessible language modal. Scene commands own selection and pause state. */
+ export class LanguagePicker extends BaseTypedComponent<InferDecoded<typeof decoder>, Container> {
++  protected readonly nodeType = Container;
+   protected readonly configDecoder = decoder;
+   private readonly off: (() => void)[] = [];
+   private readonly keys = new ControlKeys(() => this.open ? [
+--- a/scripts/check-boot.mjs
++++ b/scripts/check-boot.mjs
+@@ -4,7 +4,8 @@
+ import test from 'node:test';
+ 
+ import { ConfigStore } from '@gamedevland/engine/configs';
+-import { Graphics } from '@gamedevland/engine/layouts';
++import { Graphics, Container } from '@gamedevland/engine/renderers/pixi';
++import { Container as NativeContainer } from 'pixi.js';
+ 
+ import { SceneModules } from './checks/SceneModules.mjs';
+ 
+@@ -47,8 +48,12 @@
+     getChildGraphics: id => ({ view: graphics.get(id), input: { onTap: () => () => {} } }),
+     getChildText: id => captions.get(id),
+   };
++  const owner = new Container(new NativeContainer());
++  owner.engine = { ...node.engine, screen: node.screen };
++  owner.getChildGraphics = node.getChildGraphics;
++  owner.getChildText = node.getChildText;
+   const component = new BootSignal();
+-  component.init(node, config);
++  component.init(owner, config);
+   component.enable();
+   let initialBounds;
+   for (const [cssWidth, cssHeight] of [[360, 800], [1, 1], [1, 800], [800, 1], [16, 16], [32, 540],
+--- a/scripts/check-boss-defeat.mjs
++++ b/scripts/check-boss-defeat.mjs
+@@ -4,7 +4,7 @@
+ import test from 'node:test';
+ 
+ import { ConfigStore } from '@gamedevland/engine/configs';
+-import { Container as NodeContainer } from '@gamedevland/engine/layouts';
++import { Container as NodeContainer } from '@gamedevland/engine/renderers/pixi';
+ import { Container, Graphics, Sprite, Texture } from 'pixi.js';
+ 
+ import { BalanceSimulator } from './balance/BalanceSimulator.mjs';
+@@ -89,7 +89,9 @@
+ 
+ test('boss fragments separate, rotate, echo and disappear using real Pixi views without a renderer', async () => {
+   const glitch = new scene.EnemyGlitch();
+-  glitch.init({ engine: { di: { get: () => store } } }, {});
++  const glitchOwner = NodeContainer.create('glitch-test', { type: 'Container' }, { assets: {} });
++  glitchOwner.engine = { di: { get: () => store } };
++  glitch.init(glitchOwner, {});
+   glitch.ready();
+   const look = { boss: true, color: 0xa855f7, signal: 0x58e7ff, address: 3 };
+   const slices = [-72, -14, 15].map((top, i) => ({ texture: Texture.EMPTY, top, offset: [1, -.74, .55][i] }));
+@@ -263,7 +265,12 @@
+       },
+     };
+     try {
+-      overlay.init(host, {}); overlay.ready();
++      const owner = NodeContainer.create('overlay-test', { type: 'Container' }, { assets: {} });
++      owner.engine = { ...host.engine, screen: host.screen };
++      owner.getChildContainer = host.getChildContainer;
++      owner.getComponent = host.getComponent;
++      owner.getChildGraphics = host.getChildGraphics;
++      overlay.init(owner, {}); overlay.ready();
+       assert.equal(panels.get('panel').view.visible, false);
+       assert.equal(panels.get('bar').view.visible, false);
+       assert.equal(ink.get('dim').view.context.instructions.length, 0);
+--- a/scripts/check-hub.mjs
++++ b/scripts/check-hub.mjs
+@@ -5,7 +5,8 @@
+ import test from 'node:test';
+ 
+ import { PanelSurface, SurfaceGlitch } from '@gamedevland/cyber-ui';
+-import { BaseComponent, Container as EngineContainer, SceneLayout } from '@gamedevland/engine/layouts';
++import { BaseComponent, SceneLayout } from '@gamedevland/engine/layouts';
++import { Container as EngineContainer } from '@gamedevland/engine/renderers/pixi';
+ import { Container, Graphics } from 'pixi.js';
+ 
+ import { BattleDomainLoader } from './balance/BattleDomainLoader.mjs';
+@@ -41,6 +42,7 @@
+ 
+ test('nested SDK components receive elapsed time exactly once per frame', () => {
+   class ClockProbe extends BaseComponent {
++    nodeType = EngineContainer;
+     seconds = 0;
+     onUpdate(deltaSeconds) { this.seconds += deltaSeconds; }
+   }
+@@ -52,7 +54,9 @@
+   nodes[0].addChild('child', nodes[1]); nodes[1].addChild('grandchild', nodes[2]);
+   const elements = new Map(nodes.map((object, index) => [String(index), { id: String(index), object, cfg: { type: 'Container' },
+     children: new Map(), ...(index ? { parentId: String(index - 1) } : {}) }]));
+-  const layout = SceneLayout.fromBuildResult({}, { root: new Container(), elements });
++  const root = new EngineContainer(new Container());
++  root.addChild('root', nodes[0]);
++  const layout = SceneLayout.fromBuildResult({}, { root, elements });
+   layout.update(1);
+   assert.deepEqual(probes.map(probe => probe.seconds), [1, 1, 1], 'Layout depth must not accelerate glitch clocks');
+ });
+--- a/scripts/check-plasma.mjs
++++ b/scripts/check-plasma.mjs
+@@ -6,7 +6,7 @@
+ import { parseArgs } from 'node:util';
+ 
+ import { ConfigStore } from '@gamedevland/engine/configs';
+-import { Graphics as NodeGraphics } from '@gamedevland/engine/layouts';
++import { Graphics as NodeGraphics } from '@gamedevland/engine/renderers/pixi';
+ import { Graphics, Texture } from 'pixi.js';
+ 
+ import { SceneModules } from './checks/SceneModules.mjs';
+@@ -42,7 +42,7 @@
+ 
+ test('all weapons draw through SDK-owned Graphics and attach no foreign Pixi display objects', () => {
+   const { ink, material, beams, frames } = setup();
+-  assert.equal(ink instanceof Graphics, false, 'The SDK and game have separate Pixi runtimes');
++  assert.equal(ink instanceof Graphics, true, 'The SDK and game share the same Pixi peer runtime');
+   beams.update(2, false);
+   beams.scanner(p, scanner, 100, 2, false);
+   scene.WeaponGraphics.arc(ink, p, colors, arc, false);

@@ -1,11 +1,127 @@
 # @gamedevland/engine
 
+## Renderer modules
+
+The main SDK supports Pixi, Three and a Three world with a Pixi UI overlay.
+Engine `0.0.13-hybrid.2` and tooling `0.2.2-hybrid.2` are private local builds;
+registry publication is separate. Run `npm run pack:local` in the SDK workspace
+for compiled tarballs, checksums and installation instructions.
+
+This version changes renderer-facing public APIs. Existing Pixi games need the
+migration in [MIGRATION_RENDERERS.md](MIGRATION_RENDERERS.md) before upgrading.
+Pinned older SDK packages continue to work independently of this source checkout.
+
+A game imports exactly one module:
+
+```ts
+import { ThreeRendererModule } from '@gamedevland/engine/renderers/three';
+// Or PixiRendererModule from /renderers/pixi.
+// Or HybridRendererModule from /renderers/hybrid for a Three world and Pixi UI.
+```
+
+The Three module accepts a decoded quality profile, for example
+`new ThreeRendererModule({shadows: true, toneMapping: 'neutral', exposure: 1})`.
+Keep those authored values in consumer JSON. Model props opt into `castShadow` /
+`receiveShadow`; directional lights opt into `castShadow` and may configure
+`shadowMapSize`, `shadowBounds`, `shadowBias` and `shadowNormalBias`. Shadows are
+off by default, preserving the original lab behavior. The profile never exposes
+the native renderer to game services.
+
+Set `system.renderer: new ThreeRendererModule()` in its `GameConfig`. The module
+registers backend providers and standard node factories in the existing DI
+container before rendering starts. `system` and its renderer selection are
+required. There is no implicit Pixi fallback or runtime backend switching.
+
+Common subsystem entry points have separate JS and declaration files. `pixi.js`
+and `three` are optional peers: install only the selected graphics library (and
+`@types/three` for TypeScript Three consumers). Particle-emitter and Matter runtime
+code is bundled only into Pixi-specific chunks, rather than installed as a shared
+mandatory dependency. The build tooling uses the same local engine version. Particle presets expose the
+engine-owned decoded JSON contract rather than third-party emitter types.
+
+### Node and layout APIs
+
+- `/layouts` exports the neutral `NodeBase`, `BaseComponent<TNode>`,
+  `BaseTypedComponent<TConfig, TNode>`, `BaseAction<TNode>`, and
+  `BaseTypedAction<TConfig, TInput, TNode>`.
+- Concrete Pixi node imports move to `/renderers/pixi`. Pixi components declare
+  `protected readonly nodeType = PixiNode` (or a narrower concrete class).
+- Three components use `ThreeNode` / `ThreeGroup` from `/renderers/three` and
+  declare the corresponding `nodeType`. Binding validates that class before
+  calling user initialization hooks. Native view changes belong in these
+  components/actions, not domain services.
+- `layout.getNode(id)` returns a neutral node. Use
+  `layout.requireNode(id, ThreeNode)` for checked typed access. IDs use dots,
+  for example `root.camera` and `root.spawnArea.ore`.
+- Three layouts retain `type`, `props`, `children`, `components`, and `actions`.
+  The common envelope has generic props; the selected renderer decodes its own
+  properties. Three props are strict and reject unknown fields.
+- Standard Three types: `Group`, `Mesh`, `Model`, `OrthographicCamera`,
+  `PerspectiveCamera`, `AmbientLight`, `DirectionalLight`. Only `Group` owns
+  authored children. Imported model descendants remain inside their owner node.
+- Scene config must name the active Three camera with
+  `render: { camera: 'root.camera' }`. Camera props include `lookAt`, `near`,
+  `far`, plus orthographic `height` or perspective `fov`.
+- Three transforms use `{x, y, z}`, Y-up, XZ ground, XYZ Euler radians, and metres.
+  Pixi keeps its existing 2D pixel/percentage properties.
+- Sibling `extends` merges props and behavior maps before creation, rejects
+  cycles/type changes, and recursively resolves children. Existing `$include`
+  expansion runs before layout construction.
+- `Group`/`Container.spawnPrefab()` creates strictly;
+  `ensureChildFromPrefab()` shares concurrent work and returns `created: false`
+  to subsequent callers. A disposed parent's pending spawn cannot attach later.
+- `ThreeNode.moveTo(position, seconds)` targets the native position vector.
+  Components/actions should own the returned tween with `ownTween()`.
+
+### Assets and lifecycle
+
+Pixi includes the leaf `NineSliceSprite` node. Its required props are `asset`,
+`leftWidth`, `rightWidth`, `topHeight` and `bottomHeight`; the borders must leave
+an interior region. Standard `width`, `height`, `scale` and `anchor` props apply.
+
+After component readiness, `BaseScene` awaits renderer shader/texture warmup
+before starting its FSM. Disposal releases scene services, node behavior, native
+views, renderer caches and assets, collecting cleanup errors without skipping peers.
+
+
+Add model URLs with `AssetManifestBuilder({ ..., models: modelUrls })` and preload
+`models` before constructing `Model` nodes. A Model's `props.asset` names its
+path-relative GLB ID. MVP accepts self-contained static GLB 2.0 without required
+extensions, animation, or skinning. Each instance gets an independent hierarchy;
+geometry/materials/textures remain asset-owned until all instances release them.
+
+`Engine.run()` returns the engine handle. `await engine.destroy()` stops frame
+updates, exits scenes, detaches input/audio/platform listeners, disposes assets,
+releases the backend and removes its canvas. Repeated destruction is safe.
+There is one engine-owned frame driver; update deltas and tween durations use
+seconds. JSON actions may expose explicit millisecond fields and convert them
+at their boundary. Layouts update each component once per frame.
+
+Three input raycasts the nearest visible registered interactive node using the
+active camera. Native descendants resolve to their owning Model node. Equal
+distances keep registration order; non-interactive geometry does not block
+interactive targets. Runtime pause invalidates gestures and gates input.
+
+Hybrid mode owns two independent WebGL canvases, ordered world then UI, one
+frame driver and UI-first hit testing. Author Three and Pixi subtrees as separate
+layout roots; native children cannot cross renderer boundaries. The input canvas
+is the transparent Pixi overlay. There is no runtime renderer replacement.
+
+3D physics/particles, skeletal animation, compression and postprocessing remain
+outside this package. Games can supply scene-owned physics extensions. See `examples/pixi-smoke` in the SDK workspace and the
+`three-game` consumer for working examples.
+
+Run `npm run test:stability`, `npm test -w @gamedevland/engine` and `npm run test:renderers` for deterministic boundary/lifecycle checks and
+`npm run test:local-package` after packaging for clean core/Three/Pixi consumers.
+Those do not replace real browser or device QA.
+
+
 Open-source TypeScript HTML5 game engine SDK for Gamedev Land projects.
 
 The npm package intentionally ships a compact public distribution:
 
-- `dist/sdk.js` - bundled and minified ESM runtime
-- `dist/sdk.d.ts` - bundled TypeScript declarations
+- `dist/sdk.js` and subsystem/renderer entries - split ESM runtime
+- `dist/types/**` - declarations with independent renderer import graphs
 - `README.md`, `LICENSE`, and `package.json`
 
 Source files are available in [the SDK repository](https://github.com/gamedevland/sdk/tree/main/packages/engine/src); the npm archive contains the compiled distribution.
@@ -22,7 +138,7 @@ Source files are available in [the SDK repository](https://github.com/gamedevlan
 ## Install
 
 ```bash
-npm install @gamedevland/engine
+npm install ./vendor/gamedevland-engine-<local-build>.tgz
 ```
 
 ## Usage
@@ -45,13 +161,12 @@ import { AssetManager } from '@gamedevland/engine/assets';
 import { SchemaDecoder } from '@gamedevland/engine/validation';
 ```
 
-All public entry points resolve to the same compiled SDK bundle, so consumers can choose the import style
-that reads best in their project.
+Public entry points resolve to independent compiled entries. Renderer-specific exports stay in their renderer module.
 
 For `dragend` input events, `InputEventBase.dragEndReason` distinguishes a normal pointer release
 (`pointerup`) from a system cancellation (`pointercancel`).
 
-Layout nodes expose `getLocalBounds()` for renderer-independent local geometry queries.
+Pixi nodes expose `getLocalBounds()` for local 2D geometry queries. Three uses world transforms and camera raycasting.
 
 ## CrazyGames v3
 
@@ -171,7 +286,7 @@ The facade does not pause menus; consumers can pause their world simulation whil
 leaving panel input active. Native pointer events expose optional `button`,
 `buttons`, and `isPrimary`; synthetic/wheel events may omit them.
 
-The package provides `dist/sdk.d.ts` and is designed for TypeScript consumers using modern ESM tooling.
+The package provides `dist/types/index.d.ts` and is designed for TypeScript consumers using modern ESM tooling.
 
 Recommended compiler settings:
 
@@ -188,8 +303,7 @@ Recommended compiler settings:
 }
 ```
 
-`skipLibCheck` is recommended because the SDK exposes Pixi.js-facing types and Pixi's transitive WebGPU
-type declarations may conflict with newer TypeScript DOM library declarations in strict dependency checks.
+The experimental package is also checked with `skipLibCheck: false` in clean core, Pixi-only and Three-only consumers.
 
 ## License
 

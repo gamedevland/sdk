@@ -1,3 +1,4 @@
+import { NodeBase as PixiNode } from '@engine/layouts/nodes/NodeBase';
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 import { SchemaDecoder } from '@engine/validation';
 
@@ -233,6 +234,7 @@ type ResponsiveLayoutPositionConfig = InferDecoded<typeof PositionObjectDecoder>
 type ResponsiveLayoutOrientationOverrideConfig = InferDecoded<typeof OrientationOverrideDecoder>;
 
 export class ResponsiveLayoutComponent extends BaseTypedComponent<ResponsiveLayoutConfig, NodeBase> {
+  protected readonly nodeType = PixiNode;
   protected override readonly configDecoder = ConfigDecoder;
 
   private lastSnapshot: ResponsiveLayoutSnapshot | undefined;
@@ -526,7 +528,7 @@ export class ResponsiveLayoutComponent extends BaseTypedComponent<ResponsiveLayo
 
   private resolveGlobalRect(target: NodeBase): ResponsiveLayoutRect {
     const bounds = this.resolveRequiredLocalBounds(target, 'ResponsiveLayoutComponent.resolveGlobalRect');
-    const sceneRoot = this.node.engine.getSceneRenderRoot();
+    const sceneRoot = this.node.engine.getSceneRenderRoot().requireNode(PixiNode).view;
     const topLeft = sceneRoot.toLocal(target.view.toGlobal({ x: bounds.x, y: bounds.y }));
     const bottomRight = sceneRoot.toLocal(
       target.view.toGlobal({ x: bounds.x + bounds.width, y: bounds.y + bounds.height }),
@@ -569,7 +571,7 @@ export class ResponsiveLayoutComponent extends BaseTypedComponent<ResponsiveLayo
 
   private applyGlobalPosition(target: NodeBase, x: number, y: number): void {
     const parent = target.view.parent;
-    const sceneRoot = this.node.engine.getSceneRenderRoot();
+    const sceneRoot = this.node.engine.getSceneRenderRoot().requireNode(PixiNode).view;
 
     if (parent === null) {
       target.setPosition(Math.round(x), Math.round(y));

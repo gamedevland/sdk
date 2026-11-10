@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.13-hybrid.2 — 2026-11-10
+
+- Add explicit Pixi, Three and hybrid modules with separate runtime/declaration graphs.
+- Add static GLB leases, strict Three props, nine-slice Pixi UI, renderer warmup and one frame clock.
+- Fix partial service entry rollback, failure-tolerant node cleanup, observed async events,
+  singleton override caching, concurrent engine lifecycle, prefab property context and stale camera cleanup.
+- Release renderer-owned texture/shadow resources during teardown.
+- Breaking renderer-facing API migration: see MIGRATION_RENDERERS.md.
+
+
 ## 0.0.12 — 2026-11-07
 
 - Add Playgama Bridge v2: lifecycle signals, locale, host pause/audio, interstitial and rewarded ads.

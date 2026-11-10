@@ -2,16 +2,16 @@ import { ResizeScheduler } from './ResizeScheduler';
 import { Scaler } from './Scaler';
 
 import type { ScreenConfig, ViewportSize, VirtualSize, ScreenStateSnapshot } from './types';
-import type { Application } from 'pixi.js';
+import type { RenderSurface } from '../rendering/types';
 
 /**
- * Coordinates PIXI stage sizing and scaling based on the current
+ * Coordinates render surface sizing and scaling based on the current
  * browser viewport and a provided `ScreenConfig`.
  *
  * Responsibilities:
  * - Listen to resize/orientation changes (debounced via `ResizeScheduler`).
  * - Compute the desired internal canvas size and CSS scale (via `Scaler`).
- * - Apply changes to the PIXI renderer and stage when something changed.
+ * - Apply changes to the selected render surface when something changed.
  * - Provide helper getters and conversions between viewport and virtual space.
  */
 export class ScreenManager {
@@ -25,7 +25,7 @@ export class ScreenManager {
   private requestRender: (() => void) | undefined;
 
   constructor(
-    private readonly app: Application,
+    private readonly surface: RenderSurface,
     private readonly config: ScreenConfig,
   ) {
     const maxCanvasPixels = config.render?.maxCanvasPixels;
@@ -55,7 +55,7 @@ export class ScreenManager {
 
   /**
    * Recomputes the screen snapshot using the current browser viewport
-   * and applies changes to the PIXI stage if anything actually changed.
+   * and applies changes to the render surface if anything actually changed.
    */
   updateFromWindow(): void {
     const next = this.readValidSnapshot();
@@ -67,7 +67,7 @@ export class ScreenManager {
 
   private applySnapshot(next: ScreenStateSnapshot): void {
     const resolution = this.resolveResolution(next);
-    const changed = this.hasChanged(this.prev, next) || this.app.renderer.resolution !== resolution;
+    const changed = this.hasChanged(this.prev, next) || this.surface.resolution !== resolution;
     this.snapshot = next;
     if (changed) {
       this.applyToStage(resolution);
@@ -77,23 +77,12 @@ export class ScreenManager {
   }
 
   /**
-   * Applies the current snapshot to the PIXI renderer and stage:
+   * Applies the current snapshot to the selected render surface:
    * - Resizes the renderer using the virtual size and backing canvas resolution
    * - Does NOT scale the stage: scaling is expected to be done via CSS size of the canvas
    */
   private applyToStage(resolution: number): void {
-    const { canvas, viewport } = this.snapshot;
-    this.app.renderer.resize(canvas.width, canvas.height, resolution);
-    // The displayed size is independent of the backing canvas resolution.
-    const cv = this.app.canvas as HTMLCanvasElement;
-    if (cv && cv.style) {
-      cv.style.width = `${viewport.width}px`;
-      cv.style.height = `${viewport.height}px`;
-    }
-    // Stage remains unscaled; visually fills viewport due to canvas CSS size.
-    this.app.stage.scale.set(1);
-    this.app.stage.pivot.set(0, 0);
-    this.app.stage.position.set(0, 0);
+    this.surface.resize(this.snapshot, resolution);
     this.requestRender?.();
   }
 
@@ -184,7 +173,7 @@ export class ScreenManager {
   getViewportSize(): ViewportSize {
     return { ...this.snapshot.viewport };
   }
-  /** Uniform scale factor applied to the PIXI stage. */
+  /** Scale factor between the virtual canvas and the CSS viewport. */
   getScale(): number {
     return this.snapshot.scale;
   }
@@ -207,26 +196,13 @@ export class ScreenManager {
   }
   /**
    * Converts a point from viewport coordinates (e.g. mouse or touch position)
-   * to virtual coordinates of the internal canvas, taking stage position,
-   * pivot, and current scale into account.
+   * to virtual coordinates of the internal canvas using its measured CSS rectangle.
    */
   toVirtual(x: number, y: number): { x: number; y: number } {
-    const canvasElement = this.app.canvas as HTMLCanvasElement | undefined;
-    if (!canvasElement) {
-      const { scale } = this.snapshot;
-      const stagePos = this.app.stage.position;
-      const pivot = this.app.stage.pivot;
-      return { x: (x - stagePos.x) / scale + pivot.x, y: (y - stagePos.y) / scale + pivot.y };
-    }
-
-    const rect = canvasElement.getBoundingClientRect();
+    const rect = this.surface.canvas.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) {
-      const { scale } = this.snapshot;
-      const stagePos = this.app.stage.position;
-      const pivot = this.app.stage.pivot;
-      return { x: (x - stagePos.x) / scale + pivot.x, y: (y - stagePos.y) / scale + pivot.y };
+      throw new Error('Cannot convert pointer coordinates on an unmeasured canvas');
     }
-
     const localX = x - rect.left;
     const localY = y - rect.top;
     const normalizedX = localX / rect.width;

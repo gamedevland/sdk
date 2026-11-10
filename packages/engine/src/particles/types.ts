@@ -1,6 +1,6 @@
 import type { AssetId } from '@engine/assets';
-import type { Container } from '@engine/layouts';
-import type { EmitterConfigV3 } from '@spd789562/particle-emitter';
+import type { Container } from '@engine/renderers/pixi';
+import type { ParticlePresetReader } from './internal/ParticlePresetReader';
 
 export type ParticleHandle = string;
 
@@ -9,7 +9,7 @@ export interface ParticleVec2 {
   readonly y: number;
 }
 
-export type ParticlePreset = EmitterConfigV3;
+export type ParticlePreset = ReturnType<typeof ParticlePresetReader.read>;
 
 export interface ParticleEmitterOptions {
   readonly preset: ParticlePreset;

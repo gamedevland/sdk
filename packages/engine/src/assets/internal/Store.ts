@@ -45,4 +45,12 @@ export class AssetStore {
     }
     return meta;
   }
+  destroy(): void {
+    const errors: unknown[] = [];
+    for (const [id, meta] of this.store) {
+      try { meta.dispose?.(meta.data); this.store.delete(id); } catch (error) { errors.push(error); }
+    }
+    if (errors.length) throw new AggregateError(errors, 'Asset cache disposal failed');
+  }
+
 }

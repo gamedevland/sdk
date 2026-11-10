@@ -1,3 +1,5 @@
+import type { NodeBase as LayoutNode } from '../NodeBase';
+import { PixiServices } from '@engine/renderers/pixi/PixiServices';
 /**
  * Display node wrapping a Pixi Container. Acts as a generic parent/group node.
  *
@@ -14,11 +16,12 @@ import { TilingSprite } from './TilingSprite';
 import type { ContainerNode, DisplayNode } from './types';
 import type { AssetManager } from '../../assets/AssetManager';
 import type { EnsuredPrefabChild, SpawnedPrefab } from '../../prefabs/types';
-import type { DisplayConfig, ElementConfig } from '../types';
+import type { DisplayConfig, ElementConfig } from '@engine/renderers/pixi/types';
 import type { AssetId } from '@engine/assets';
 import type { ParticlePreset, ParticleVec2 } from '@engine/particles';
 
 export class Container extends NodeBase implements ContainerNode {
+  override readonly acceptsChildren = true;
   constructor(private readonly container: PIXI.Container) {
     super(container);
     this.setKind('container');
@@ -32,42 +35,30 @@ export class Container extends NodeBase implements ContainerNode {
     return this.container;
   }
 
-  async spawnPrefab<TNode extends NodeBase = NodeBase>(params: {
+  async spawnPrefab(params: {
     prefabId: string;
     localId: string;
     overrides?: Partial<DisplayConfig>;
-  }): Promise<SpawnedPrefab<TNode>> {
+  }): Promise<SpawnedPrefab<LayoutNode>> {
     const request = {
       prefabId: params.prefabId,
       parent: this,
       localId: params.localId,
       ...(params.overrides ? { overrides: params.overrides } : {}),
     };
-    return this.engine.prefabs.spawnToContainer<TNode>(request);
+    return this.engine.prefabs.spawnToContainer(request);
   }
 
-  async ensureChildFromPrefab<TNode extends NodeBase = NodeBase>(params: {
+  async ensureChildFromPrefab(params: {
     prefabId: string;
     localId: string;
     overrides?: Partial<DisplayConfig>;
-  }): Promise<EnsuredPrefabChild<TNode>> {
-    if (this.hasChild(params.localId)) {
-      return {
-        node: this.getChildNode(params.localId) as TNode,
-        created: false,
-        dispose: () => Promise.resolve(),
-      };
-    }
-    const spawned = await this.spawnPrefab<TNode>(params);
-    return {
-      node: spawned.node,
-      created: true,
-      dispose: () => spawned.dispose(),
-    };
+  }): Promise<EnsuredPrefabChild<LayoutNode>> {
+    return this.engine.prefabs.ensure({parent: this, ...params});
   }
 
   emitBurst(params: { preset: ParticlePreset; position: ParticleVec2 }): void {
-    this.engine.particles.emitBurst({
+    this.engine.di.get(PixiServices.ParticlesManager).emitBurst({
       preset: params.preset,
       parent: this,
       position: params.position,
@@ -79,7 +70,7 @@ export class Container extends NodeBase implements ContainerNode {
     position: ParticleVec2;
     source?: string;
   }): Promise<void> {
-    await this.engine.particles.emitBurstFromAsset({
+    await this.engine.di.get(PixiServices.ParticlesManager).emitBurstFromAsset({
       presetAssetId: params.presetAssetId,
       parent: this,
       position: params.position,

@@ -1,4 +1,5 @@
-import { Bodies, Body, Engine, Events, Sleeping, Vertices, World } from 'matter-js';
+import Matter from 'matter-js';
+import type { Body, Engine, World } from 'matter-js';
 
 import { PhysicsErrors } from '../PhysicsErrors';
 
@@ -50,7 +51,7 @@ export class MatterWorldAdapter {
   private bounds?: PhysicsBounds;
 
   constructor(private readonly config: PhysicsWorldConfig) {
-    this.engine = Engine.create();
+    this.engine = Matter.Engine.create();
     this.world = this.engine.world;
     this.engine.positionIterations = 4;
     this.engine.velocityIterations = 4;
@@ -79,7 +80,7 @@ export class MatterWorldAdapter {
 
     const material = this.resolveMaterial(params.material);
 
-    const body = Bodies.rectangle(params.x, params.y, params.width, params.height, {
+    const body = Matter.Bodies.rectangle(params.x, params.y, params.width, params.height, {
       isStatic: params.isStatic ?? false,
       isSensor: params.isSensor ?? false,
       restitution: material.restitution,
@@ -93,7 +94,7 @@ export class MatterWorldAdapter {
     });
 
     this.bodyRegistry.add(params.bodyId, body, source);
-    World.add(this.world, body);
+    Matter.World.add(this.world, body);
 
     this.applyInitialVelocity(body, params, source);
   }
@@ -105,7 +106,7 @@ export class MatterWorldAdapter {
 
     const material = this.resolveMaterial(params.material);
 
-    const body = Bodies.circle(params.x, params.y, params.radius, {
+    const body = Matter.Bodies.circle(params.x, params.y, params.radius, {
       isStatic: params.isStatic ?? false,
       isSensor: params.isSensor ?? false,
       restitution: material.restitution,
@@ -118,7 +119,7 @@ export class MatterWorldAdapter {
     });
 
     this.bodyRegistry.add(params.bodyId, body, source);
-    World.add(this.world, body);
+    Matter.World.add(this.world, body);
     this.applyInitialVelocity(body, params, source);
   }
 
@@ -139,7 +140,7 @@ export class MatterWorldAdapter {
 
     const material = this.resolveMaterial(params.material);
     const parts = params.parts.map((vertices) => this.createPolygonPart(vertices, material, source));
-    const body = Body.create({
+    const body = Matter.Body.create({
       parts,
       isStatic: params.isStatic ?? false,
       isSensor: params.isSensor ?? false,
@@ -159,27 +160,27 @@ export class MatterWorldAdapter {
     }
 
     if (params.preservePartPositions !== true) {
-      Body.setPosition(body, { x: params.x, y: params.y });
+      Matter.Body.setPosition(body, { x: params.x, y: params.y });
     }
     this.bodyRegistry.add(params.bodyId, body, source);
-    World.add(this.world, body);
+    Matter.World.add(this.world, body);
     this.applyInitialVelocity(body, params, source);
   }
 
   removeBody(bodyId: string, source: string): void {
     const body = this.bodyRegistry.getRequired(bodyId, source);
     this.bodyRegistry.removeOptional(bodyId);
-    World.remove(this.world, body);
+    Matter.World.remove(this.world, body);
   }
 
   sleepBody(bodyId: string, source: string): void {
     const body = this.bodyRegistry.getRequired(bodyId, source);
-    Sleeping.set(body, true);
+    Matter.Sleeping.set(body, true);
   }
 
   wakeBody(bodyId: string, source: string): void {
     const body = this.bodyRegistry.getRequired(bodyId, source);
-    Sleeping.set(body, false);
+    Matter.Sleeping.set(body, false);
     // Restore the world-default frictionAir so that bodies woken after settling
     // (e.g. after a topology change) damp back to rest at the normal rate,
     // regardless of the frictionAir they were created with (e.g. spawn override).
@@ -189,10 +190,10 @@ export class MatterWorldAdapter {
   setBodyVelocity(bodyId: string, velocity: PhysicsBodyVelocity, source: string): void {
     this.assertValidVelocity(velocity, source);
     const body = this.bodyRegistry.getRequired(bodyId, source);
-    Sleeping.set(body, false);
-    Body.setVelocity(body, { x: velocity.x, y: velocity.y });
+    Matter.Sleeping.set(body, false);
+    Matter.Body.setVelocity(body, { x: velocity.x, y: velocity.y });
     if (velocity.angular !== undefined) {
-      Body.setAngularVelocity(body, velocity.angular);
+      Matter.Body.setAngularVelocity(body, velocity.angular);
     }
   }
 
@@ -201,8 +202,8 @@ export class MatterWorldAdapter {
       throw PhysicsErrors.invalidBodyImpulse(source, impulse.x, impulse.y);
     }
     const body = this.bodyRegistry.getRequired(bodyId, source);
-    Sleeping.set(body, false);
-    Body.applyForce(body, body.position, { x: impulse.x, y: impulse.y });
+    Matter.Sleeping.set(body, false);
+    Matter.Body.applyForce(body, body.position, { x: impulse.x, y: impulse.y });
   }
 
   setBodyForce(bodyId: string, force: PhysicsBodyForce, source: string): void {
@@ -223,7 +224,7 @@ export class MatterWorldAdapter {
 
   setBodyStatic(bodyId: string, isStatic: boolean, source: string): void {
     const body = this.bodyRegistry.getRequired(bodyId, source);
-    Body.setStatic(body, isStatic);
+    Matter.Body.setStatic(body, isStatic);
   }
 
   setBodyPosition(bodyId: string, x: number, y: number, source: string): void {
@@ -231,7 +232,7 @@ export class MatterWorldAdapter {
       throw PhysicsErrors.invalidBodyVelocity(source, x, y);
     }
     const body = this.bodyRegistry.getRequired(bodyId, source);
-    Body.setPosition(body, { x, y });
+    Matter.Body.setPosition(body, { x, y });
   }
 
   setBodyAngle(bodyId: string, angleRad: number, source: string): void {
@@ -239,8 +240,8 @@ export class MatterWorldAdapter {
       throw PhysicsErrors.invalidBodyVelocity(source, 0, 0, angleRad);
     }
     const body = this.bodyRegistry.getRequired(bodyId, source);
-    Body.setAngle(body, angleRad);
-    Body.setAngularVelocity(body, 0);
+    Matter.Body.setAngle(body, angleRad);
+    Matter.Body.setAngularVelocity(body, 0);
   }
 
   getBodyMotion(bodyId: string, source: string): PhysicsBodyMotion {
@@ -254,7 +255,7 @@ export class MatterWorldAdapter {
   }
 
   step(dtSeconds: number): void {
-    Engine.update(this.engine, dtSeconds * 1000);
+    Matter.Engine.update(this.engine, dtSeconds * 1000);
   }
 
   listBodySnapshots(): readonly PhysicsBodySnapshot[] {
@@ -301,18 +302,18 @@ export class MatterWorldAdapter {
       handler(event.pairs.map((pair) => this.toCollisionPair(pair)));
     };
     if (type === 'collisionStart') {
-      Events.on(this.engine, 'collisionStart', listener);
+      Matter.Events.on(this.engine, 'collisionStart', listener);
     } else {
-      Events.on(this.engine, 'collisionActive', listener);
+      Matter.Events.on(this.engine, 'collisionActive', listener);
     }
     return () => {
-      Events.off(this.engine, type, listener);
+      Matter.Events.off(this.engine, type, listener);
     };
   }
 
   dispose(): void {
     for (const body of this.boundaryBodies) {
-      World.remove(this.world, body);
+      Matter.World.remove(this.world, body);
     }
     this.boundaryBodies.length = 0;
 
@@ -361,8 +362,8 @@ export class MatterWorldAdapter {
   ): Body {
     this.assertValidVertices(vertices, source);
     const matterVertices = vertices.map((vertex) => ({ x: vertex.x, y: vertex.y }));
-    const centre = Vertices.centre(matterVertices);
-    return Bodies.fromVertices(centre.x, centre.y, [matterVertices], {
+    const centre = Matter.Vertices.centre(matterVertices);
+    return Matter.Bodies.fromVertices(centre.x, centre.y, [matterVertices], {
       restitution: material.restitution,
       friction: material.friction,
       frictionStatic: material.frictionStatic,
@@ -405,10 +406,10 @@ export class MatterWorldAdapter {
     this.assertValidVelocity(velocity, source);
 
     if (velocity.x !== 0 || velocity.y !== 0) {
-      Body.setVelocity(body, { x: velocity.x, y: velocity.y });
+      Matter.Body.setVelocity(body, { x: velocity.x, y: velocity.y });
     }
     if (velocity.angular !== undefined && velocity.angular !== 0) {
-      Body.setAngularVelocity(body, velocity.angular);
+      Matter.Body.setAngularVelocity(body, velocity.angular);
     }
   }
 
@@ -445,7 +446,7 @@ export class MatterWorldAdapter {
 
   private rebuildBounds(): void {
     for (const body of this.boundaryBodies) {
-      World.remove(this.world, body);
+      Matter.World.remove(this.world, body);
     }
     this.boundaryBodies.length = 0;
 
@@ -463,28 +464,28 @@ export class MatterWorldAdapter {
     // on contact and settle without bouncing.
     const wallMaterial = { isStatic: true, friction: 2.5, frictionStatic: 2.0, restitution: 0 };
 
-    const left = Bodies.rectangle(
+    const left = Matter.Bodies.rectangle(
       bounds.x - half,
       worldTopY + worldHeight / 2,
       thickness,
       worldHeight + thickness * 2,
       wallMaterial,
     );
-    const right = Bodies.rectangle(
+    const right = Matter.Bodies.rectangle(
       bounds.x + bounds.width + half,
       worldTopY + worldHeight / 2,
       thickness,
       worldHeight + thickness * 2,
       wallMaterial,
     );
-    const floor = Bodies.rectangle(
+    const floor = Matter.Bodies.rectangle(
       bounds.x + bounds.width / 2,
       bounds.y + bounds.height + half,
       bounds.width + thickness * 2,
       thickness,
       wallMaterial,
     );
-    const ceiling = Bodies.rectangle(
+    const ceiling = Matter.Bodies.rectangle(
       bounds.x + bounds.width / 2,
       worldTopY - half,
       bounds.width + thickness * 2,
@@ -493,6 +494,6 @@ export class MatterWorldAdapter {
     );
 
     this.boundaryBodies.push(left, right, floor, ceiling);
-    World.add(this.world, this.boundaryBodies);
+    Matter.World.add(this.world, this.boundaryBodies);
   }
 }

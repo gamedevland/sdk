@@ -11,11 +11,11 @@ export class RuntimeSchedulerProfilingMonitor {
     return this.enabled;
   }
 
-  onFrameEnd(frameDurationMs: number): void {
+  onFrameEnd(schedulerDurationMs: number): void {
     this.windowFrameCount += 1;
-    this.windowTotalSchedulerCostMs += frameDurationMs;
-    if (frameDurationMs > this.windowMaxSchedulerCostMs) {
-      this.windowMaxSchedulerCostMs = frameDurationMs;
+    this.windowTotalSchedulerCostMs += schedulerDurationMs;
+    if (schedulerDurationMs > this.windowMaxSchedulerCostMs) {
+      this.windowMaxSchedulerCostMs = schedulerDurationMs;
     }
     if (this.windowFrameCount < RuntimeSchedulerProfilingMonitor.ValidationWindowFrames) {
       return;

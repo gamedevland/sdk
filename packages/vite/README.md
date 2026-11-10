@@ -127,3 +127,20 @@ See the [official Poki CLI](https://github.com/poki/poki-cli). The browser runti
 MIT. See [LICENSE](./LICENSE). Source code and contributions: [gamedevland/sdk](https://github.com/gamedevland/sdk).
 
 Earlier npm releases retain the license included in their respective archives. Third-party dependencies retain their own licenses.
+
+
+## Local renderer SDK builds
+
+Tooling `0.2.2-hybrid.2` uses engine `0.0.13-hybrid.2`. The packaged project
+selects PixiRendererModule explicitly and uses the public renderer entry point.
+
+The upstream Poki CLI currently depends on an older glob chain. Keep this
+root-package override when installing this tooling into an existing project
+(the generated template already includes it):
+
+```json
+{"overrides": {"archiver-utils": {"glob": "14.0.2"}}}
+```
+
+SDK validation exercises archive generation with that override. Overrides belong
+to the consuming root package; dependency package overrides are not inherited.

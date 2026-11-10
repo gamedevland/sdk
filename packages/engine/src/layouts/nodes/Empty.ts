@@ -9,7 +9,7 @@ import { NodeBase } from './NodeBase';
 
 import type { DisplayNode } from './types';
 import type { AssetManager } from '../../assets/AssetManager';
-import type { ElementConfig } from '../types';
+import type { ElementConfig } from '@engine/renderers/pixi/types';
 
 export class Empty extends NodeBase {
   constructor() {

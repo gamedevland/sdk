@@ -7,6 +7,7 @@ import type { BaseComponent } from '../layouts';
 import type { Scene } from '../scenes/SceneManager';
 
 export interface SceneConfig {
+  render?: { camera?: string };
   /** Unique key identifying the scene in logs/registries. */
   key: string;
   /** Class constructor for the concrete scene implementation. */

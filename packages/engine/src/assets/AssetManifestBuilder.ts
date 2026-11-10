@@ -12,6 +12,7 @@ export interface AssetGlobInput {
   prefabsJson: AssetGlobRecord;
   images: AssetGlobRecord;
   fonts: AssetGlobRecord;
+  models?: AssetGlobRecord;
 }
 
 export interface AssetIdStrategy {
@@ -76,6 +77,7 @@ export class DefaultBundleBuildPolicy implements BundleBuildPolicy {
       { name: 'prefabs', type: 'json', files: input.prefabsJson },
       { name: 'images', type: 'image', files: input.images },
       { name: 'fonts', type: 'font', files: input.fonts },
+      { name: 'models', type: 'model', files: input.models ?? {} },
     ];
   }
 }

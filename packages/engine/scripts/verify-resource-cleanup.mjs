@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import process from 'node:process';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { AudioManager, Container, DisplacementFilterComponent, Sprite } from '../dist/sdk.js';
+import { AudioManager } from '../dist/sdk.js';
+import { Container, DisplacementFilterComponent, Sprite } from '../dist/renderers/pixi.js';
 
 /** Exercise the built public bundle with real Howler event stores and Pixi bind groups. */
 class ResourceCleanupVerification {
@@ -77,7 +78,8 @@ class ResourceCleanupVerification {
     const parent = Container.create('parent', { type: 'Container' }, { assets: {} });
     const layer = Container.create('layer', { type: 'Container' }, { assets: {} }); parent.view.addChild(layer.view);
     const texture = blank.view.texture, source = texture.source, before = source.listenerCount('change');
-    const node = { view: layer.view, engine: { di: { get: () => ({ getRequiredTexture: () => texture }) } } };
+    const node = layer;
+    node.engine = { di: { get: () => ({ getRequiredTexture: () => texture }) }, tweens: {kill() {}} };
     const peer = new DisplacementFilterComponent(), component = new DisplacementFilterComponent();
     peer.init(node, { noiseAssetId: 'noise' }); component.init(node, { noiseAssetId: 'noise' });
     try {

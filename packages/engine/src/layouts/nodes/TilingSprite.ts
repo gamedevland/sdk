@@ -8,7 +8,7 @@ import { NodeBase } from './NodeBase';
 import type { DisplayNode, TilingSpriteNode } from './types';
 import type { AssetManager } from '../../assets/AssetManager';
 import type { AssetId } from '../../assets/types';
-import type { ElementConfig } from '../types';
+import type { ElementConfig } from '@engine/renderers/pixi/types';
 
 export class TilingSprite extends NodeBase implements TilingSpriteNode {
   constructor(private readonly sprite: PIXI.TilingSprite) {

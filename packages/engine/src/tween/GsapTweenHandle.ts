@@ -1,5 +1,5 @@
 import type { TweenHandle } from './types';
-import type { gsap } from 'gsap';
+import type {gsap} from 'gsap';
 
 export class GsapTweenHandle implements TweenHandle {
   private completionResolved = false;
@@ -10,7 +10,7 @@ export class GsapTweenHandle implements TweenHandle {
    * Wraps a GSAP tween/timeline instance and exposes a stable
    * engine-wide interface for controlling it.
    */
-  constructor(private readonly tween: gsap.core.Animation) {
+  constructor(private readonly tween: NonNullable<ReturnType<typeof gsap.getById>>) {
     this.completionPromise = new Promise<void>((resolve) => {
       this.resolveCompletion = resolve;
     });

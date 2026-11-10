@@ -17,7 +17,8 @@ export interface GameConfig {
    * @remarks
    * New format groups system settings under `system`; legacy top-level fields are still accepted.
    */
-  system?: {
+  system: {
+    renderer: import("../rendering/types").RendererModule;
     /** Background color for the canvas. */
     canvasBackground?: string;
     /** Screen scaling and DPR configuration. */
