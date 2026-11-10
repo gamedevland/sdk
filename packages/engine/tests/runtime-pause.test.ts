@@ -5,11 +5,11 @@ import type { RuntimePauseReason } from '../src/core/runtime/RuntimeActivity';
 
 class ActivityDocument extends EventTarget {
   visibilityState = 'visible';
-  focused = true;
+  focused = false;
   hasFocus(): boolean { return this.focused; }
 }
 
-test('focus loss silently pauses runtime and cannot override other pause reasons', () => {
+test('visible unfocused iframes run; hidden pages and independent pause reasons still pause', () => {
   const document = new ActivityDocument(), window = new EventTarget();
   const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
@@ -23,24 +23,33 @@ test('focus loss silently pauses runtime and cannot override other pause reasons
   });
   try {
     controller.attach(); controller.attach();
+    assert.equal(controller.isPaused(), false, 'An unfocused Poki iframe must load and run');
+    window.dispatchEvent(new Event('blur'));
     assert.equal(controller.isPaused(), false);
-    document.focused = false; window.dispatchEvent(new Event('blur'));
-    assert.equal(controller.isPaused(), true);
-    assert.deepEqual(reasons, ['pageInactive']);
     controller.setManualPaused(true);
-    document.focused = true; window.dispatchEvent(new Event('focus'));
+    window.dispatchEvent(new Event('focus'));
     assert.equal(controller.isPaused(), true);
     assert.deepEqual(reasons, ['manual']);
     controller.setManualPaused(false);
-    assert.equal(controller.isPaused(), false);
     document.visibilityState = 'hidden'; document.dispatchEvent(new Event('visibilitychange'));
     window.dispatchEvent(new Event('focus'));
     assert.equal(controller.isPaused(), true, 'Focus must not resume a hidden page');
+    controller.setPlatformPaused(true);
     document.visibilityState = 'visible'; document.dispatchEvent(new Event('visibilitychange'));
+    assert.equal(controller.isPaused(), true, 'Visibility must not override platform pause');
+    controller.setAdBreakPaused(true);
+    controller.setPlatformPaused(false);
+    assert.equal(controller.isPaused(), true, 'An active ad keeps the runtime paused');
+    controller.setAdBreakPaused(false);
     assert.equal(controller.isPaused(), false);
-    assert.deepEqual(pauses, [true, false, true, false]);
+    window.dispatchEvent(new Event('pagehide'));
+    assert.equal(controller.isPaused(), true);
+    window.dispatchEvent(new Event('pageshow'));
+    assert.equal(controller.isPaused(), false, 'A visible page resumes without focus');
+    assert.deepEqual(pauses, [true, false, true, false, true, false]);
     controller.dispose(); controller.dispose();
-    window.dispatchEvent(new Event('blur'));
+    document.visibilityState = 'hidden'; document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('pagehide'));
     assert.equal(controller.isPaused(), false, 'Disposed monitors release their listeners');
   } finally {
     controller.dispose();

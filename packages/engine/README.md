@@ -381,3 +381,7 @@ Run `node scripts/verify-music-single-instance.mjs` to check the actual bundled
 Howler queue/events against a simulated HTML media device, including cold load,
 boot/main duplicates, unlock races, preserved seek, mute/unmute during decoding,
 and cancellation. This supplements `verify-audio-activation.mjs`.
+
+Visible embedded games do not pause on keyboard focus loss. Runtime page inactivity follows
+`visibilitychange` and `pagehide`/`pageshow`; manual, platform and ad pause reasons remain independent.
+Asset loading and scene readiness must not depend on receiving an animation frame.

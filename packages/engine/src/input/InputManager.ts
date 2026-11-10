@@ -207,6 +207,8 @@ export class InputManager {
     // If not dragging yet but threshold exceeded -> start dragging
     if (!this.drags.isDragging(ev.pointerId) && this.drags.shouldStart(st)) {
       if (this.drags.hasActiveDrag()) {
+        const base = this.buildPointerBase(ev, time, { x: st.virtualX, y: st.virtualY }, hit.target);
+        this.emit({ ...base, type: 'pointermove' });
         return;
       }
       this.drags.start(ev.pointerId);
