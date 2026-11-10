@@ -28,11 +28,11 @@ export class ProjectCreator {
       throw new Error('[create] Destination must be a new or empty directory. Existing files are never overwritten.');
     }
     const pkg = S.decode(JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')),
-      S.object({ version: S.string({ nonEmpty: true }), dependencies: S.object({
+      S.object({ version: S.string({ nonEmpty: true }), peerDependencies: S.object({
         '@gamedevland/engine': S.string({ nonEmpty: true }),
       }) }), 'tooling/package.json');
     const replacements = new Map([
-      ['__PROJECT_NAME__', name], ['__ENGINE_VERSION__', pkg.dependencies['@gamedevland/engine']],
+      ['__PROJECT_NAME__', name], ['__ENGINE_VERSION__', pkg.peerDependencies['@gamedevland/engine']],
       ['__TOOLING_VERSION__', pkg.version],
     ]);
     await mkdir(root, { recursive: true });
