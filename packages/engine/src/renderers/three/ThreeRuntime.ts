@@ -14,13 +14,15 @@ import { ThreeGroup } from "./ThreeGroup";
 import { ThreeNode } from "./ThreeNode";
 import { ThreeProperties } from "./ThreeProperties";
 import { ThreeHitTester } from "./ThreeHitTester";
+import { RendererWarmup } from "../../rendering/RendererWarmup";
 import type { RenderRuntime } from "../../rendering/types";
 import type { ScreenStateSnapshot } from "../../screen/types";
 import type { SceneLayout } from "../../layouts/scene/SceneLayout";
 export class ThreeRuntime implements RenderRuntime {
   readonly mode = "three";
   private disposed = false;
-  private warming = false;
+  private warmup: RendererWarmup | undefined;
+  private warmupStage: string | undefined;
   get canvases(): readonly HTMLCanvasElement[] {
     return [this.canvas];
   }
@@ -120,30 +122,47 @@ export class ThreeRuntime implements RenderRuntime {
     this.updateCamera();
   }
   renderFrame(): void {
-    if (!this.warming && this.backend && this.camera?.parent)
+    if (!this.warmup && this.backend && this.camera?.parent)
       this.backend.render(this.scene, this.camera);
   }
   async warmupScene(): Promise<void> {
     const camera = this.camera;
     if (!camera) throw new Error("Three scene warmup requires an active camera");
     const renderer = this.renderer;
-    this.warming = true;
+    if (renderer.getContext().isContextLost()) throw new Error("Three warmup requires an active WebGL context");
+    if (this.warmup) throw new Error("Three warmup is already running");
+    const warmup = new RendererWarmup(renderer.domElement, "Three");
+    this.warmup = warmup;
+    this.warmupStage = "three:compile-shaders";
     try {
-      await renderer.compileAsync(this.scene, camera);
+      await warmup.wait(() => renderer.compileAsync(this.scene, camera));
+      warmup.signal.throwIfAborted();
       // Upload buffers/textures and initialize shadow passes before gameplay starts.
-      if (this.backend === renderer && this.camera === camera)
+      this.warmupStage = "three:upload-resources";
+      if (this.backend === renderer && this.camera === camera) {
         renderer.render(this.scene, camera);
+        if (renderer.getContext().isContextLost()) throw new Error("Three WebGL context lost during preparation render");
+      }
     } finally {
-      this.warming = false;
+      warmup.dispose();
+      if (this.warmup === warmup) {
+        this.warmup = undefined;
+        this.warmupStage = undefined;
+      }
     }
   }
+  getWarmupStage(): string | undefined { return this.warmupStage; }
   tick(_dt: number): void {}
   cleanup(root: import("../../layouts/NodeBase").NodeBase): void {
-    if (this.camera && root instanceof ThreeNode && root.view.getObjectById(this.camera.id)) this.camera = undefined;
+    if (this.camera && root instanceof ThreeNode && root.view.getObjectById(this.camera.id)) {
+      this.warmup?.cancel();
+      this.camera = undefined;
+    }
   }
   destroy(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.warmup?.cancel();
     this.backend?.domElement.remove();
     this.backend?.dispose();
     this.backend?.forceContextLoss();

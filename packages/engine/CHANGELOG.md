@@ -1,19 +1,18 @@
 # Changelog
 
-## 0.0.13-rings-texture.3 — 2026-11-10
+## 0.0.13 — 2026-11-10
 
-- Make `AudioManager.stopByHandle` idempotent for completed and inactive playback handles.
-- Cover natural completion, playback/load failures, SFX mute, stop-all, disposal and stale handles beside a new playback.
-
-## 0.0.13-hybrid.2 — 2026-11-10
-
-- Add explicit Pixi, Three and hybrid modules with separate runtime/declaration graphs.
-- Add static GLB leases, strict Three props, nine-slice Pixi UI, renderer warmup and one frame clock.
-- Fix partial service entry rollback, failure-tolerant node cleanup, observed async events,
-  singleton override caching, concurrent engine lifecycle, prefab property context and stale camera cleanup.
-- Release renderer-owned texture/shadow resources during teardown.
-- Breaking renderer-facing API migration: see MIGRATION_RENDERERS.md.
-
+- Add explicit Pixi, Three and hybrid renderer modules with isolated runtime/declaration graphs.
+- Add component-owned Three surfaces in Pixi textures, with correct alpha edges, resize and resource cleanup.
+- Add static GLB leases, validated Three props, nine-slice Pixi UI, renderer warmup, profiling and one frame clock.
+- Prepare Pixi resources without RAF; cancel renderer warmup on cleanup/context loss and report its stage.
+- Count only visible-page time in scene deadlines to avoid false background-tab timeouts.
+- Include IndexedDB error names/messages in diagnostics.
+- Harden scene rollback, async events, DI overrides, concurrent lifecycle and renderer resource disposal.
+- Make audio handle cleanup idempotent after completion, errors, mute, stop-all and disposal.
+- Keep visible embedded games running after focus loss; preserve visibility, manual, platform and ad pauses.
+- Preserve second-pointer movement during an active drag for multi-touch controls.
+- Breaking: select a renderer explicitly and move concrete Pixi imports to `/renderers/pixi`; see MIGRATION_RENDERERS.md.
 
 ## 0.0.12 — 2026-11-07
 

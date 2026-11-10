@@ -25,7 +25,7 @@ export interface GameConfig {
     screen?: ScreenConfig;
     /** Scene lifecycle transition timeouts in milliseconds. */
     lifecycle?: {
-      /** Timeout for each scene lifecycle hook (`preload`, `onEnter`, `onExit`). */
+      /** Visible-page time budget for each lifecycle hook (`preload`, `onEnter`, `onExit`). */
       transitionTimeoutMs?: number;
     };
     /** Deterministic engine boot preload plan for JSON configs. */

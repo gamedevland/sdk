@@ -21,6 +21,7 @@ jobs:
       - run: npm run build
       - run: npm run typecheck
       - run: npm test --workspace @gamedevland/engine
+      - run: npm run test:three-texture
       - run: npm run test:renderers
       - run: npm run test:archive-dependency
       - run: npm run test:stability

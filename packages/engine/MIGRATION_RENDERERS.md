@@ -73,8 +73,8 @@ The adapter owns only the renderer and its Pixi texture, never scene resources.
 Resolution is capped at 2. Rendering across independent WebGL contexts copies
 pixels; this is a compatibility path for embedded content, not a zero-copy target.
 
-The paired local Vite package declares the engine as a peer, so installing the
-local renderer build never pulls a second engine copy from the registry.
+Vite tooling 0.2.2 declares engine 0.0.13 as a peer, so the project uses one engine
+copy for runtime and build tooling.
 
 Canvas texture coverage edges require `premultiply-alpha-on-upload` when Pixi
 uploads the browser canvas. Labeling the source as already premultiplied skips

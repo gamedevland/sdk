@@ -129,9 +129,9 @@ MIT. See [LICENSE](./LICENSE). Source code and contributions: [gamedevland/sdk](
 Earlier npm releases retain the license included in their respective archives. Third-party dependencies retain their own licenses.
 
 
-## Local renderer SDK builds
+## Renderer SDK compatibility
 
-Tooling `0.2.2-hybrid.2` uses engine `0.0.13-hybrid.2`. The packaged project
+Tooling `0.2.2` uses engine `0.0.13` as a peer dependency. The packaged project
 selects PixiRendererModule explicitly and uses the public renderer entry point.
 
 The upstream Poki CLI currently depends on an older glob chain. Keep this

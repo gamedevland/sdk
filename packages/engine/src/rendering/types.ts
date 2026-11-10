@@ -32,6 +32,8 @@ export interface RenderRuntime extends RenderSurface {
   prepareScene(layout: SceneLayout, cameraPath?: string): void;
   /** Prepare GPU resources after component readiness, before scene FSM startup. */
   warmupScene?(): Promise<void>;
+  /** Current backend preparation stage for lifecycle timeout diagnostics. */
+  getWarmupStage?(): string | undefined;
   renderFrame(): void;
   tick(dt: number): void;
   cleanup(root: NodeBase): void;

@@ -3,9 +3,9 @@
 ## Renderer modules
 
 The main SDK supports Pixi, Three and a Three world with a Pixi UI overlay.
-Engine `0.0.13-hybrid.2` and tooling `0.2.2-hybrid.2` are private local builds;
-registry publication is separate. Run `npm run pack:local` in the SDK workspace
-for compiled tarballs, checksums and installation instructions.
+Engine `0.0.13` and tooling `0.2.2` publish these renderer modules.
+Run `npm run pack:local` in the SDK workspace for compiled tarballs, checksums
+and installation instructions.
 
 This version changes renderer-facing public APIs. Existing Pixi games need the
 migration in [MIGRATION_RENDERERS.md](MIGRATION_RENDERERS.md) before upgrading.
@@ -381,3 +381,10 @@ Run `node scripts/verify-music-single-instance.mjs` to check the actual bundled
 Howler queue/events against a simulated HTML media device, including cold load,
 boot/main duplicates, unlock races, preserved seek, mute/unmute during decoding,
 and cancellation. This supplements `verify-audio-activation.mjs`.
+
+Visible embedded games do not pause on keyboard focus loss. Runtime page inactivity follows
+`visibilitychange` and `pagehide`/`pageshow`; manual, platform and ad pause reasons remain independent.
+
+Scene hook deadlines count visible-page time. Pixi prepares hidden resources in bounded timer batches,
+without relying on animation frames; renderer warmup rejects on cleanup or WebGL context loss.
+Lifecycle diagnostics include the current backend preparation stage.

@@ -233,9 +233,11 @@ export class BaseScene implements Scene {
   getLifecycleDebugDetails(): Readonly<Record<string, string>> | undefined {
     const layoutDetails = this.layout?.getLifecycleDebugDetails();
     const serviceHostDetails = this.serviceHost?.getLifecycleDebugDetails();
+    const rendererWarmupStage = this.runtimeEngine?.rendering.getWarmupStage?.();
     return {
       sceneKey: this.config.key,
       sceneLifecycleStage: this.lifecycleDebugStage,
+      ...(rendererWarmupStage ? { rendererWarmupStage } : {}),
       ...(layoutDetails ?? {}),
       ...(serviceHostDetails ?? {}),
     };

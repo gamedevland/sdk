@@ -1,4 +1,5 @@
 import { EngineError, EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
+import { SceneHookDeadline } from './SceneHookDeadline';
 
 import type { SceneManagerRuntime } from '@engine/core';
 import type { DiContainerInterface } from '@engine/di/types';
@@ -71,6 +72,7 @@ export interface SceneTransitionOptions {
 }
 
 export interface SceneManagerOptions {
+  /** Visible-page time budget per lifecycle hook. Defaults to 10000ms. */
   transitionTimeoutMs?: number;
 }
 
@@ -440,28 +442,18 @@ export class SceneManager {
   }): Promise<void> {
     const { scene, operation, phase, timeoutMs, hook } = params;
 
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => {
-        reject(
-          this.createSceneLifecycleEngineError({
-            method: 'SceneManager.runHookWithTimeout',
-            operation,
-            phase,
-            scene,
-            message: `Scene lifecycle hook timeout (${timeoutMs}ms)`,
-          }),
-        );
-      }, timeoutMs);
-    });
-
     this.lifecycleHookStack.push({
       operation,
       phase,
       sceneName: this.sceneName(scene),
     });
     try {
-      await Promise.race([Promise.resolve(hook()), timeoutPromise]);
+      await new SceneHookDeadline(timeoutMs).run(hook, () =>
+        this.createSceneLifecycleEngineError({
+          method: 'SceneManager.runHookWithTimeout', operation, phase, scene,
+          message: `Scene lifecycle hook timeout (${timeoutMs}ms of visible time)`,
+        }),
+      );
     } catch (error) {
       if (this.isSceneLifecycleFailureError(error)) throw error;
       throw this.createSceneLifecycleEngineError({
@@ -474,7 +466,6 @@ export class SceneManager {
       });
     } finally {
       this.lifecycleHookStack.pop();
-      if (timer !== undefined) clearTimeout(timer);
     }
   }
 
