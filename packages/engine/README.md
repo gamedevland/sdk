@@ -385,3 +385,11 @@ and cancellation. This supplements `verify-audio-activation.mjs`.
 Visible embedded games do not pause on keyboard focus loss. Runtime page inactivity follows
 `visibilitychange` and `pagehide`/`pageshow`; manual, platform and ad pause reasons remain independent.
 Asset loading and scene readiness must not depend on receiving an animation frame.
+
+### Passive pointer lifecycle
+
+`engine.input.observe(type, handler)` observes normalized input before routed listeners.
+It receives read-only event data and cannot stop propagation. Use it to reconcile pointer
+start/end/cancel state even when a UI node consumes the routed event. Unsubscribe with
+the returned function when the owner detaches. Unexpected native `lostpointercapture`
+terminates the tracked pointer with `pointercancel`; normal release does not duplicate it.

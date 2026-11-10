@@ -26,12 +26,14 @@ export class InputManager {
   private drags: DragRecognizer;
   private hits: HitTester;
   private router = new InputRouter();
+  private readonly observers = new Map<InputType, Set<(event: Readonly<EngineInputEventInit>) => void>>();
   private attached = false;
   private paused = false;
   private handlePointerDown!: (ev: PointerEvent) => void;
   private handlePointerMove!: (ev: PointerEvent) => void;
   private handlePointerUp!: (ev: PointerEvent) => void;
   private handlePointerCancel!: (ev: PointerEvent) => void;
+  private handleLostPointerCapture!: (ev: PointerEvent) => void;
   private handleWheel!: (ev: WheelEvent) => void;
   private canvas: HTMLCanvasElement | undefined;
   private lastMoveTime = 0;
@@ -60,6 +62,9 @@ export class InputManager {
     this.handlePointerMove = this.onPointerMove.bind(this);
     this.handlePointerUp = this.onPointerUp.bind(this);
     this.handlePointerCancel = this.onPointerCancel.bind(this);
+    this.handleLostPointerCapture = (event) => {
+      if (this.tracker.get(event.pointerId)?.isDown) this.onPointerCancel(event);
+    };
     this.handleWheel = this.onWheel.bind(this);
   }
 
@@ -97,6 +102,7 @@ export class InputManager {
     canvas.addEventListener('pointermove', this.handlePointerMove, { passive: true });
     canvas.addEventListener('pointerup', this.handlePointerUp, { passive: true });
     canvas.addEventListener('pointercancel', this.handlePointerCancel, { passive: true });
+    canvas.addEventListener('lostpointercapture', this.handleLostPointerCapture, { passive: true });
     canvas.addEventListener('wheel', this.handleWheel, { passive: true });
   }
 
@@ -110,6 +116,7 @@ export class InputManager {
     target.removeEventListener('pointermove', this.handlePointerMove);
     target.removeEventListener('pointerup', this.handlePointerUp);
     target.removeEventListener('pointercancel', this.handlePointerCancel);
+    target.removeEventListener('lostpointercapture', this.handleLostPointerCapture);
     target.removeEventListener('wheel', this.handleWheel);
     this.tracker.clearAll();
     this.drags.end();
@@ -124,6 +131,22 @@ export class InputManager {
     const canvas = this.canvas;
     if (canvas) this.detach(canvas);
     this.hits.clearInteractive();
+    this.observers.clear();
+  }
+
+  /** Observe normalized input before routing; UI stopPropagation cannot hide pointer lifecycle events. */
+  observe(type: InputType, handler: (event: Readonly<EngineInputEventInit>) => void): () => void {
+    let handlers = this.observers.get(type);
+    if (!handlers) {
+      handlers = new Set();
+      this.observers.set(type, handlers);
+    }
+    handlers.add(handler);
+    const captured = handlers;
+    return () => {
+      captured.delete(handler);
+      if (captured.size === 0) this.observers.delete(type);
+    };
   }
 
   /**
@@ -290,6 +313,7 @@ export class InputManager {
    * Emits the event to local router and the engine-wide input channel.
    */
   private emit(e: EngineInputEventInit): void {
+    for (const handler of [...(this.observers.get(e.type) ?? [])]) handler(e);
     this.router.emit(e);
     this.engine.inputChannel.publish(e);
   }
