@@ -134,8 +134,11 @@ export class AudioManager {
     });
   }
 
+  /** Stop a playback if still active; completed or already stopped handles are a no-op. */
   stopByHandle(handle: AudioHandle): void {
-    this.backend.stop(handle);
+    if (this.backend.isHandleActive(handle)) {
+      this.backend.stop(handle);
+    }
     if (this.activeMusicHandle === handle) {
       this.clearRememberedMusicRequest();
     }

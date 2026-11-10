@@ -144,5 +144,29 @@ for(const mode of ['running','rejected','pending','unchanged']) {
 {
  const {audio,target}=setup('rejected');audio.setMusicEnabled(false);audio.playSfx('audio/tap.mp3');await flush();assert.equal(contexts[0].calls.length,1,'SFX-only games did not attempt automatic resume');assert.equal(sources[0].starts,0);target.dispatch('pointerup');await flush();audio.playSfx('audio/tap.mp3');await flush();assert.equal(sources[0].starts,1);assert(!audio.isMusicPlaying());audio.dispose();runs++;
 }
+// A one-shot may finish between a consumer retaining its handle and stopping it later.
+for (const terminal of ['end', 'playerror', 'loaderror', 'mute', 'stopAll', 'dispose']) {
+ const {audio}=setup();await audio.unlock();
+ const handle=audio.playSfx('audio/swoosh.mp3');await flush();assert(handle);
+ const source=sources.at(-1),soundId=source.requests.at(-1).id;
+ if(terminal==='mute')audio.setSfxEnabled(false);
+ else if(terminal==='stopAll')audio.stopAll('sfx');
+ else if(terminal==='dispose')audio.dispose();
+ else source.emit(terminal,soundId);
+ assert.doesNotThrow(()=>audio.stopByHandle(handle),`Stopping a ${terminal} one-shot must be idempotent`);
+ assert.doesNotThrow(()=>audio.stopByHandle(handle),'Repeated cleanup must be idempotent');
+ audio.dispose();runs++;
+}
+{
+ const {audio}=setup();await audio.unlock();
+ const ended=audio.playSfx('audio/swoosh.mp3');await flush();assert(ended);
+ const source=sources.at(-1);source.emit('end',source.requests.at(-1).id);
+ const active=audio.playSfx('audio/swoosh.mp3');await flush();assert(active);
+ const activeId=source.requests.at(-1).id;
+ assert.throws(()=>audio.pauseByHandle(ended),error=>error.code==='AUDIO_MISSING_REQUIRED','Other handle operations remain strict');
+ audio.stopByHandle(ended);assert.equal(source.playing(activeId),true,'An expired handle must not stop a later playback');
+ audio.stopByHandle(active);assert.equal(source.playing(activeId),false);
+ audio.stopByHandle(active);audio.dispose();runs++;
+}
 console.log(`Audio activation: ${runs} scenarios passed (autoplay, blocked/rejected/pending contexts, first/early gesture, HTML retry, duplicate prevention, SFX dropping, mute, keyboard, disposal and volume validation).`);
 delete globalThis.__audioActivationFixture;

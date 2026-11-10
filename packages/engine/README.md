@@ -265,6 +265,10 @@ and recreates a removed emitter when enabled again; invalid direct manager calls
 
 ### Resource cleanup (0.0.8)
 
+`audio.stopByHandle(handle)` is idempotent: it stops active playback and does nothing
+for a naturally completed, failed, muted, stopped or disposed playback. Other
+handle operations remain strict. Stopping remembered music also cancels its recovery request.
+
 Audio handles release their end/stop/playerror subscriptions on every terminal path,
 including explicit stop, channel stop, source unload and disposal. Loop boundaries
 and pause keep subscriptions until playback actually terminates.
