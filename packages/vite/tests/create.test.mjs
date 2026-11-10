@@ -14,7 +14,7 @@ test('create produces a blank portable project from packaged templates', async t
   const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
   const tooling = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(pkg.name, 'my-game');
-  assert.equal(pkg.dependencies['@gamedevland/engine'], tooling.dependencies['@gamedevland/engine']);
+  assert.equal(pkg.dependencies['@gamedevland/engine'], tooling.peerDependencies['@gamedevland/engine']);
   assert.equal(pkg.devDependencies['@gamedevland/vite'], tooling.version);
   assert.match(await readFile(path.join(root, '.gitignore'), 'utf8'), /node_modules/);
   assert.match(await readFile(path.join(root, '.env.crazygames'), 'utf8'), /VITE_PLATFORM=crazygames/);

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.13-rings-texture.3 — 2026-11-10
+
+- Make `AudioManager.stopByHandle` idempotent for completed and inactive playback handles.
+- Cover natural completion, playback/load failures, SFX mute, stop-all, disposal and stale handles beside a new playback.
+
 ## 0.0.13-hybrid.2 — 2026-11-10
 
 - Add explicit Pixi, Three and hybrid modules with separate runtime/declaration graphs.

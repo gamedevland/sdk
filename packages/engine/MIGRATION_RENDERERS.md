@@ -59,3 +59,25 @@ independently, share the clock and route UI hits before world hits.
   compatibility changes; behavioral validation does not imply drop-in binary compatibility.
 
 See the repository validation report for the tested games and browser scope.
+
+## Three content embedded in a Pixi layout
+
+Use `PixiThreeTextureRendererModule` from `/renderers/hybrid` to retain Pixi as the
+primary renderer and enable SDK-loaded GLB assets. A node component owns a
+`ThreeTextureSurface({width, height, resolution})`, assigns its `texture` to a
+Pixi Sprite, and calls `render(scene, camera)` after camera/scene changes. Idle
+scenes need no upload. The canvas stays off DOM; pointer routing stays on Pixi.
+Call `resize` on screen changes and `dispose` when the component detaches.
+The owner also releases acquired `ModelAsset` leases and its own Three resources.
+The adapter owns only the renderer and its Pixi texture, never scene resources.
+Resolution is capped at 2. Rendering across independent WebGL contexts copies
+pixels; this is a compatibility path for embedded content, not a zero-copy target.
+
+The paired local Vite package declares the engine as a peer, so installing the
+local renderer build never pulls a second engine copy from the registry.
+
+Canvas texture coverage edges require `premultiply-alpha-on-upload` when Pixi
+uploads the browser canvas. Labeling the source as already premultiplied skips
+the upload conversion and produces bright fringes. The browser GPU regression
+in Rings 3D verifies bounded composited edge colors at opaque and faded sprite
+alpha; the SDK surface contract also checks this upload mode.
