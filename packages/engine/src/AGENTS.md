@@ -105,4 +105,4 @@ Rules for implementing and evolving `sdk/packages/engine/src/**`.
   - run the SDK/workspace typecheck command available in `sdk/package.json`;
   - run the SDK/workspace lint command if available.
 - If editing from a consumer project, also run that consumer's `npm run typecheck` and `npm run lint` when the change affects it.
-- Do not launch browsers, browser automation, GUI apps, or local dev servers unless explicitly requested.
+- Use local dev servers, browsers and browser automation proactively for runtime verification when relevant.
