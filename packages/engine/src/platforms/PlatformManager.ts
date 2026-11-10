@@ -20,6 +20,7 @@ export class PlatformManager {
   private adBreakHooks: PlatformAdBreakHooks;
   private initPromise: Promise<void> | undefined;
   private initialized = false;
+  private disposed = false;
   private gameplayRunning = false;
 
   constructor(options: PlatformManagerOptions) {
@@ -36,6 +37,7 @@ export class PlatformManager {
   }
 
   async init(): Promise<void> {
+    if (this.disposed) throw new Error('Platform manager is disposed');
     if (this.initialized) {
       return;
     }
@@ -44,15 +46,20 @@ export class PlatformManager {
       return;
     }
     this.initPromise = this.initializeAdapter();
-    await this.initPromise;
-    this.initPromise = undefined;
+    try {
+      await this.initPromise;
+    } finally {
+      this.initPromise = undefined;
+    }
   }
 
   loadingFinished(): void {
+    this.assertActive();
     this.adapter.loadingFinished();
   }
 
   gameplayStart(): void {
+    this.assertActive();
     if (this.gameplayRunning) {
       return;
     }
@@ -72,13 +79,19 @@ export class PlatformManager {
     return this.adapter.id;
   }
 
-  shouldMuteAudioOnAdRequest(): boolean { return this.adapter.muteAudioOnAdRequest !== false; }
+  shouldMuteAudioOnAdRequest(): boolean {
+    return this.adapter.muteAudioOnAdRequest !== false;
+  }
 
   isAdvertisingAvailable(): boolean {
-    return this.initialized && (this.adapter.isAdvertisingAvailable?.() ?? !['null', 'web'].includes(this.adapter.id));
+    return (
+      this.initialized &&
+      (this.adapter.isAdvertisingAvailable?.() ?? !['null', 'web'].includes(this.adapter.id))
+    );
   }
 
   reportGameCompletedPercentage(percentage: number): void {
+    this.assertActive();
     if (!Number.isFinite(percentage) || percentage < 0 || percentage > 100) {
       throw new RangeError('Game completion percentage must be between 0 and 100');
     }
@@ -86,12 +99,17 @@ export class PlatformManager {
   }
 
   setGameContext(context: Readonly<Record<string, string | number | boolean>>): void {
+    this.assertActive();
     this.adapter.setGameContext?.(context);
   }
 
-  clearGameContext(): void { this.adapter.clearGameContext?.(); }
+  clearGameContext(): void {
+    this.assertActive();
+    this.adapter.clearGameContext?.();
+  }
 
   happytime(): void {
+    this.assertActive();
     this.adapter.happytime();
   }
 
@@ -112,6 +130,7 @@ export class PlatformManager {
   }
 
   async prerollBreak(): Promise<void> {
+    this.assertActive();
     this.adBreakHooks.onAdBreakStart?.();
     try {
       await this.adapter.prerollBreak();
@@ -121,6 +140,7 @@ export class PlatformManager {
   }
 
   async commercialBreak(): Promise<void> {
+    this.assertActive();
     this.adBreakHooks.onAdBreakStart?.();
     try {
       await this.adapter.commercialBreak();
@@ -130,6 +150,7 @@ export class PlatformManager {
   }
 
   async rewardedBreak(): Promise<PlatformRewardResult> {
+    this.assertActive();
     this.adBreakHooks.onAdBreakStart?.();
     try {
       return await this.adapter.rewardedBreak();
@@ -139,12 +160,21 @@ export class PlatformManager {
   }
 
   isInitialized(): boolean {
-    return this.adapter.isInitialized();
+    return !this.disposed && this.adapter.isInitialized();
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.initialized = false;
     this.gameplayRunning = false;
+    this.adBreakHooks = PlatformManager.EMPTY_AD_BREAK_HOOKS;
+    this.adapter.setRuntimeHooks(PlatformManager.EMPTY_RUNTIME_HOOKS);
     this.adapter.dispose();
+  }
+
+  private assertActive(): void {
+    if (this.disposed) throw new Error('Platform manager is disposed');
   }
 
   private async initializeAdapter(): Promise<void> {
@@ -152,6 +182,10 @@ export class PlatformManager {
       await this.adapter.init();
     } catch {
       // Adapter errors must not crash engine startup.
+    }
+    if (this.disposed) {
+      this.adapter.dispose();
+      return;
     }
     this.initialized = true;
   }

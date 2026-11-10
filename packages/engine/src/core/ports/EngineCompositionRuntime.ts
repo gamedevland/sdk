@@ -5,8 +5,6 @@ import type { PrefabRuntime } from './PrefabRuntime';
 import type { SceneManagerRuntime } from './SceneManagerRuntime';
 
 export interface EngineCompositionRuntime
-  extends CommandRuntime,
-    InputRuntime,
-    PrefabRuntime,
-    SceneManagerRuntime,
-    PhysicsRuntime {}
+  extends CommandRuntime, InputRuntime, PrefabRuntime, SceneManagerRuntime, PhysicsRuntime {
+  readonly rendering: import('../../rendering/types').RenderRuntime;
+}

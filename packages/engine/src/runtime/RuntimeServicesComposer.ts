@@ -1,3 +1,5 @@
+import { PresentationRuntimeSystem } from './PresentationRuntimeSystem';
+import type { RuntimeDiagnostics } from '../diagnostics';
 import { LayoutRuntimeSystem } from './LayoutRuntimeSystem';
 import { ParticlesRuntimeSystem } from './ParticlesRuntimeSystem';
 import { PhysicsRuntimeSystem } from './PhysicsRuntimeSystem';
@@ -21,8 +23,8 @@ interface CreatePhysicsStepServiceParams {
  * Composes runtime scheduler services and static system registrations.
  */
 export class RuntimeServicesComposer {
-  createScheduler(): RuntimeScheduler<Scene> {
-    const scheduler = new RuntimeScheduler<Scene>();
+  createScheduler(diagnostics?: RuntimeDiagnostics): RuntimeScheduler<Scene> {
+    const scheduler = new RuntimeScheduler<Scene>(diagnostics);
     this.registerStaticSystems(scheduler);
     return scheduler;
   }
@@ -37,5 +39,6 @@ export class RuntimeServicesComposer {
     scheduler.register(new PhysicsRuntimeSystem(), { staticSystem: true });
     scheduler.register(new ParticlesRuntimeSystem(), { staticSystem: true });
     scheduler.register(new TweensRuntimeSystem(), { staticSystem: true });
+    scheduler.register(new PresentationRuntimeSystem(), { staticSystem: true });
   }
 }

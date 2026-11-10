@@ -1,3 +1,4 @@
+import { RuntimeDiagnostics } from '../diagnostics';
 import { RenderTokens } from '../rendering/RenderTokens';
 import type { RenderRuntime } from '../rendering/types';
 
@@ -20,7 +21,6 @@ import SceneManager from '../scenes/SceneManager';
 import { ScreenManager } from '../screen/ScreenManager';
 import { GsapTweenManager } from '../tween/GsapTweenManager';
 
-
 import type { EngineOptions } from './EngineOptions';
 import type { EngineCompositionRuntime } from './ports';
 import type { RuntimePhysicsStepPort } from '../runtime/RuntimePhysicsStepService';
@@ -29,6 +29,8 @@ import type { Scene } from '../scenes/SceneManager';
 
 interface StaticSubsystems {
   readonly rendering: RenderRuntime;
+  readonly diagnostics: RuntimeDiagnostics;
+  readonly moduleDisposers: readonly (() => void)[];
   readonly assets: AssetManager;
   readonly audio: AudioManager;
   readonly events: EventBus;
@@ -65,17 +67,41 @@ export class EngineSubsystemFactory {
       assets.registerBundles(...options.bundles);
     }
 
-    const events = new EventBus();
+    const diagnostics = new RuntimeDiagnostics();
+    if (options.onDiagnostic) diagnostics.subscribe(options.onDiagnostic);
+    const events = new EventBus((error, event) =>
+      diagnostics.report({ kind: 'error', source: 'events', error, eventType: event.type }),
+    );
     const runtimeServicesComposer = new RuntimeServicesComposer();
-    const runtimeScheduler = runtimeServicesComposer.createScheduler();
+    const runtimeScheduler = runtimeServicesComposer.createScheduler(diagnostics);
     const diContainer = new DiContainer();
     if (!options.renderer) throw new Error('Engine requires an explicit renderer module');
     options.renderer.register(diContainer, assets, screenConfig);
     const rendering = diContainer.get(RenderTokens.Runtime);
+    const moduleDisposers: Array<() => void> = [];
+    try {
+      for (const module of options.modules ?? []) {
+        const dispose = module.register(diContainer);
+        if (dispose) moduleDisposers.push(dispose);
+      }
+    } catch (cause) {
+      const errors: unknown[] = [cause];
+      for (const dispose of moduleDisposers.reverse()) {
+        try {
+          dispose();
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+      if (errors.length > 1) throw new AggregateError(errors, 'Module registration rollback failed');
+      throw cause;
+    }
     const audio = AudioManager.createDefault(assets, options.audio);
     const platform = PlatformManager.createFromEnvironment();
 
     return {
+      diagnostics,
+      moduleDisposers,
       rendering,
       assets,
       audio,
@@ -128,5 +154,4 @@ export class EngineSubsystemFactory {
     assets.registerLoader('image', new ImageLoader());
     assets.registerLoader('json', new JsonLoader());
   }
-
 }

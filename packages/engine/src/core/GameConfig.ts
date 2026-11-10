@@ -18,14 +18,15 @@ export interface GameConfig {
    * New format groups system settings under `system`; legacy top-level fields are still accepted.
    */
   system: {
-    renderer: import("../rendering/types").RendererModule;
+    renderer: import('../rendering/types').RendererModule;
+    modules?: readonly import('./EngineModule').EngineModule[];
     /** Background color for the canvas. */
     canvasBackground?: string;
     /** Screen scaling and DPR configuration. */
     screen?: ScreenConfig;
     /** Scene lifecycle transition timeouts in milliseconds. */
     lifecycle?: {
-      /** Timeout for each scene lifecycle hook (`preload`, `onEnter`, `onExit`). */
+      /** Visible-page time budget for each lifecycle hook (`preload`, `onEnter`, `onExit`). */
       transitionTimeoutMs?: number;
     };
     /** Deterministic engine boot preload plan for JSON configs. */
@@ -47,6 +48,8 @@ export interface GameConfig {
     persistence?: {
       /** Shared namespace prefix used by persistent state stores (`<namespace>:<key>`). */
       namespace: string;
+      /** Platform identity owns saves by default. Mirror must be selected deliberately. */
+      policy?: import('../configs').PersistencePolicy;
       /** localStorage backend config. Enabled by default. */
       localStorage?: {
         readonly enabled?: boolean;

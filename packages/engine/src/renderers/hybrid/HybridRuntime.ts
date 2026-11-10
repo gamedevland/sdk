@@ -78,6 +78,10 @@ export class HybridRuntime implements RenderRuntime {
   async warmupScene(): Promise<void> {
     await Promise.all([this.world.warmupScene(), this.ui.warmupScene()]);
   }
+  getWarmupStage(): string | undefined {
+    const stages = [this.world.getWarmupStage(), this.ui.getWarmupStage()].filter(Boolean);
+    return stages.length > 0 ? stages.join(",") : undefined;
+  }
   renderFrame(): void {
     this.world.renderFrame();
     this.ui.renderFrame();

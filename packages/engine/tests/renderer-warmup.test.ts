@@ -4,6 +4,9 @@ import { PerspectiveCamera } from "three";
 import { ThreeRuntime } from "../src/renderers/three/ThreeRuntime";
 
 class WarmupBackend {
+  readonly domElement = new EventTarget();
+  lost = false;
+  getContext(): { isContextLost: () => boolean } { return { isContextLost: () => this.lost }; }
   renders = 0;
   compilations = 0;
   release: (() => void) | undefined;
@@ -44,10 +47,44 @@ test("a scene removed during asynchronous compilation cannot submit a stale rend
   const { runtime, backend } = new WarmupFixture();
   const pending = runtime.warmupScene();
   runtime.cleanup(runtime.root);
+  await assert.rejects(pending, /warmup cancelled/);
+  backend.release?.();
+  await Promise.resolve();
+  runtime.renderFrame();
+  assert.equal(backend.renders, 0);
+});
+
+test("context loss rejects a pending shader warmup without waiting for compilation", async () => {
+  const { runtime, backend } = new WarmupFixture();
+  const pending = runtime.warmupScene();
+  backend.lost = true;
+  backend.domElement.dispatchEvent(new Event("webglcontextlost"));
+  await assert.rejects(pending, /WebGL context lost/);
+  backend.release?.();
+  await Promise.resolve();
+  assert.equal(backend.renders, 0);
+  backend.lost = false;
+  const retry = runtime.warmupScene();
+  backend.release?.();
+  await retry;
+  assert.equal(backend.renders, 1);
+});
+
+test("cleanup of an unrelated scene cannot cancel the current camera warmup", async () => {
+  const { runtime, backend } = new WarmupFixture();
+  const pending = runtime.warmupScene();
+  runtime.cleanup(new ThreeRuntime().root);
   backend.release?.();
   await pending;
   runtime.renderFrame();
-  assert.equal(backend.renders, 0);
+  assert.equal(backend.renders, 2);
+});
+
+test("an already lost context does not start compilation", async () => {
+  const { runtime, backend } = new WarmupFixture();
+  backend.lost = true;
+  await assert.rejects(runtime.warmupScene(), /active WebGL context/);
+  assert.equal(backend.compilations, 0);
 });
 
 test("warmup fails fast without a camera and propagates compilation failures", async () => {

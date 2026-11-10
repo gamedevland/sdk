@@ -1,5 +1,5 @@
 import { RuleBasedValidator, type Rule } from '../core/RuleBasedValidator';
-import { isObject } from '../rules/guards';
+import { LayoutGuards } from '../rules/guards';
 
 import type { ValidatorRegistry } from '../core/Validator';
 import type { ElementConfig, LayoutFile } from '@engine/layouts/types';
@@ -7,7 +7,7 @@ import type { ValidationIssue } from '@engine/validation';
 
 export class LayoutValidator extends RuleBasedValidator<LayoutFile> {
   constructor(private readonly registry: ValidatorRegistry) {
-    const guard = (v: unknown): v is LayoutFile => isObject(v);
+    const guard = (v: unknown): v is LayoutFile => LayoutGuards.isObject(v);
     const rules: Rule<LayoutFile>[] = [
       (obj, ctx) => {
         const issues: ValidationIssue[] = [];

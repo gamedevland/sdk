@@ -98,7 +98,9 @@ export abstract class BaseCommand {
       await operation();
     } catch (error: unknown) {
       if (this.isSceneScopeActive()) {
-        console.error(`Detached command failed: ${this.getCommandName()}`, error);
+        const diagnostics = this.ctx.engine.diagnostics;
+        if (diagnostics) diagnostics.report({ kind: 'error', source: this.getCommandName(), error });
+        else console.error(`Detached command failed: ${this.getCommandName()}`, error);
       }
     }
   }
@@ -115,24 +117,15 @@ export abstract class BaseCommand {
     return this.readPayload(data).decodePayload(decoder, sourceName);
   }
 
-  protected requirePayloadFiniteNumber(
-    key: string,
-    data?: Record<string, unknown>,
-  ): number {
+  protected requirePayloadFiniteNumber(key: string, data?: Record<string, unknown>): number {
     return this.readPayload(data).requireFiniteNumber(key);
   }
 
-  protected requirePayloadNonEmptyString(
-    key: string,
-    data?: Record<string, unknown>,
-  ): string {
+  protected requirePayloadNonEmptyString(key: string, data?: Record<string, unknown>): string {
     return this.readPayload(data).requireNonEmptyString(key);
   }
 
-  protected readPayloadNonEmptyString(
-    key: string,
-    data?: Record<string, unknown>,
-  ): string | undefined {
+  protected readPayloadNonEmptyString(key: string, data?: Record<string, unknown>): string | undefined {
     return this.readPayload(data).readNonEmptyString(key);
   }
 

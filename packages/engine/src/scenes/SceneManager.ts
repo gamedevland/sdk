@@ -1,19 +1,14 @@
+import { AbortableOperation } from '../lifecycle/AbortableOperation';
 import { EngineError, EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
+import { SceneHookDeadline } from './SceneHookDeadline';
 
 import type { SceneManagerRuntime } from '@engine/core';
 import type { DiContainerInterface } from '@engine/di/types';
 import type { SceneFSM } from '@engine/fsm/SceneFSM';
 import type { SceneLayout } from '@engine/layouts';
 
-
 export type SceneTransitionOperation = 'replace' | 'push' | 'pop';
-export type SceneTransitionPhase =
-  | 'idle'
-  | 'exiting'
-  | 'preloading'
-  | 'entering'
-  | 'committing'
-  | 'failed';
+export type SceneTransitionPhase = 'idle' | 'exiting' | 'preloading' | 'entering' | 'committing' | 'failed';
 
 type SceneLifecyclePhase = Exclude<SceneTransitionPhase, 'idle' | 'failed' | 'committing'>;
 type SceneFailurePhase = Exclude<SceneTransitionPhase, 'idle'>;
@@ -21,6 +16,7 @@ type SceneFailurePhase = Exclude<SceneTransitionPhase, 'idle'>;
 export interface SceneContext {
   engine: SceneManagerRuntime;
   params?: Record<string, unknown>;
+  readonly signal?: AbortSignal;
 }
 
 export interface Scene {
@@ -68,9 +64,11 @@ export interface Scene {
 
 export interface SceneTransitionOptions {
   params?: Record<string, unknown>;
+  readonly signal?: AbortSignal;
 }
 
 export interface SceneManagerOptions {
+  /** Visible-page time budget per lifecycle hook. Defaults to 10000ms. */
   transitionTimeoutMs?: number;
 }
 
@@ -103,6 +101,7 @@ export class SceneManager {
    * right scene even before it is committed to the stack. Synced back to the stack top
    * on commit or on entry failure.
    */
+  private readonly scopes = new Map<SceneContext, AbortController>();
   private currentScene: Scene | null = null;
   private currentSceneScopeVersion = 0;
   private transitionTimeoutMs: number;
@@ -221,10 +220,7 @@ export class SceneManager {
     return this.enqueueTransition(operation, action);
   }
 
-  private enqueueTransition(
-    operation: SceneTransitionOperation,
-    action: () => Promise<void>,
-  ): Promise<void> {
+  private enqueueTransition(operation: SceneTransitionOperation, action: () => Promise<void>): Promise<void> {
     const execute = async (): Promise<void> => {
       try {
         await this.runTransitionAction(operation, action);
@@ -300,11 +296,13 @@ export class SceneManager {
     const current = this.top();
     if (current) {
       this.transitionState = 'exiting';
-      await this.runExit(current.scene, current.ctx, 'replace');
-      this.cleanupEngineSceneRefs(current.scene);
-      this.stack.pop();
-      // No active scene between exit and enter — event routing is suspended.
-      this.setCurrentScene(null);
+      try {
+        await this.runExit(current.scene, current.ctx, 'replace');
+      } finally {
+        this.cleanupEngineSceneRefs(current.scene);
+        this.stack.pop();
+        this.setCurrentScene(null);
+      }
     }
 
     const nextCtx = this.buildSceneContext(options);
@@ -345,20 +343,20 @@ export class SceneManager {
     if (!current) return;
 
     this.transitionState = 'exiting';
-    await this.runExit(current.scene, current.ctx, 'pop');
-    this.cleanupEngineSceneRefs(current.scene);
-
-    this.transitionState = 'committing';
-    this.stack.pop();
-
-    const next = this.top();
-    this.setCurrentScene(next?.scene ?? null);
-    if (next) {
-      next.paused = false;
-      this.restoreSceneBindings(next.scene);
-    } else {
-      this.detachTickerIfAttached();
-      this.lastTickTime = 0;
+    try {
+      await this.runExit(current.scene, current.ctx, 'pop');
+    } finally {
+      this.cleanupEngineSceneRefs(current.scene);
+      this.stack.pop();
+      const next = this.top();
+      this.setCurrentScene(next?.scene ?? null);
+      if (next) {
+        next.paused = false;
+        this.restoreSceneBindings(next.scene);
+      } else {
+        this.detachTickerIfAttached();
+        this.lastTickTime = 0;
+      }
     }
   }
 
@@ -374,7 +372,8 @@ export class SceneManager {
       operation,
       phase: 'preloading',
       timeoutMs: this.transitionTimeoutMs,
-      hook: () => scene.preload!(ctx),
+      ctx,
+      hook: () => scene.preload?.(ctx),
     });
   }
 
@@ -387,22 +386,42 @@ export class SceneManager {
     // Point currentScene at incoming scene immediately so that engine subsystems
     // (event bridge, DI) target the correct scene while onEnter initialises providers.
     this.setCurrentScene(scene);
+    let schedulerEntered = false;
     try {
       await this.runHookWithTimeout({
         scene,
         operation,
         phase: 'entering',
         timeoutMs: this.transitionTimeoutMs,
+        ctx,
         hook: () => scene.onEnter(ctx),
       });
       this.runSchedulerSceneEnter(scene, operation);
+      schedulerEntered = true;
       this.captureSchedulerSceneBaseline(scene, operation);
     } catch (error) {
+      this.scopes.get(ctx)?.abort(error);
       // Entry failed — revert to whatever is on the stack (may be null).
       const errors: unknown[] = [error];
+      if (schedulerEntered) {
+        try {
+          this.runSchedulerSceneExit(scene, operation);
+        } catch (cleanup) {
+          errors.push(cleanup);
+        }
+      }
       try {
-        await this.runHookWithTimeout({scene, operation, phase: 'exiting', timeoutMs: this.transitionTimeoutMs, hook: () => scene.onExit(ctx)});
-      } catch (cleanup) { errors.push(cleanup); }
+        await this.runHookWithTimeout({
+          scene,
+          operation,
+          phase: 'exiting',
+          ctx,
+          timeoutMs: this.transitionTimeoutMs,
+          hook: () => scene.onExit(ctx),
+        });
+      } catch (cleanup) {
+        errors.push(cleanup);
+      }
       this.cleanupEngineSceneRefs(scene);
       const previous = this.top()?.scene;
       this.setCurrentScene(previous ?? null);
@@ -414,21 +433,33 @@ export class SceneManager {
   }
 
   /** Runs scene exit (required for all scenes). */
-  private async runExit(
-    scene: Scene,
-    ctx: SceneContext,
-    operation: SceneTransitionOperation,
-  ): Promise<void> {
+  private async runExit(scene: Scene, ctx: SceneContext, operation: SceneTransitionOperation): Promise<void> {
+    this.scopes.get(ctx)?.abort(new DOMException('Scene exited', 'AbortError'));
     this.invalidateCurrentSceneScope();
-    this.runSchedulerSceneExit(scene, operation);
-    await this.runHookWithTimeout({
-      scene,
-      operation,
-      phase: 'exiting',
-      timeoutMs: this.transitionTimeoutMs,
-      hook: () => scene.onExit(ctx),
-    });
-    this.validateSchedulerSceneLeakState(scene, operation);
+    const errors: unknown[] = [];
+    try {
+      this.runSchedulerSceneExit(scene, operation);
+    } catch (error) {
+      errors.push(error);
+    }
+    try {
+      await this.runHookWithTimeout({
+        scene,
+        operation,
+        phase: 'exiting',
+        timeoutMs: this.transitionTimeoutMs,
+        ctx,
+        hook: () => scene.onExit(ctx),
+      });
+    } catch (error) {
+      errors.push(error);
+    }
+    try {
+      this.validateSchedulerSceneLeakState(scene, operation);
+    } catch (error) {
+      errors.push(error);
+    }
+    if (errors.length) throw new AggregateError(errors, 'Scene exit failed');
   }
 
   private async runHookWithTimeout(params: {
@@ -436,24 +467,10 @@ export class SceneManager {
     operation: SceneTransitionOperation;
     phase: SceneLifecyclePhase;
     timeoutMs: number;
+    ctx: SceneContext;
     hook: () => Promise<void> | void;
   }): Promise<void> {
     const { scene, operation, phase, timeoutMs, hook } = params;
-
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => {
-        reject(
-          this.createSceneLifecycleEngineError({
-            method: 'SceneManager.runHookWithTimeout',
-            operation,
-            phase,
-            scene,
-            message: `Scene lifecycle hook timeout (${timeoutMs}ms)`,
-          }),
-        );
-      }, timeoutMs);
-    });
 
     this.lifecycleHookStack.push({
       operation,
@@ -461,8 +478,19 @@ export class SceneManager {
       sceneName: this.sceneName(scene),
     });
     try {
-      await Promise.race([Promise.resolve(hook()), timeoutPromise]);
+      await new SceneHookDeadline(timeoutMs).run(() => {
+        const pending = Promise.resolve().then(hook);
+        return phase === 'exiting' ? pending : AbortableOperation.wait(pending, params.ctx.signal);
+      }, () => {
+        const error = this.createSceneLifecycleEngineError({
+          method: 'SceneManager.runHookWithTimeout', operation, phase, scene,
+          message: `Scene lifecycle hook timeout (${timeoutMs}ms of visible time)`,
+        });
+        this.scopes.get(params.ctx)?.abort(error);
+        return error;
+      });
     } catch (error) {
+      if (phase !== 'exiting') this.scopes.get(params.ctx)?.abort(error);
       if (this.isSceneLifecycleFailureError(error)) throw error;
       throw this.createSceneLifecycleEngineError({
         method: 'SceneManager.runHookWithTimeout',
@@ -474,7 +502,7 @@ export class SceneManager {
       });
     } finally {
       this.lifecycleHookStack.pop();
-      if (timer !== undefined) clearTimeout(timer);
+      if (phase === 'exiting' || params.ctx.signal?.aborted) this.scopes.delete(params.ctx);
     }
   }
 
@@ -558,9 +586,7 @@ export class SceneManager {
         phase: params.phase,
         scene: sceneName,
         ...(causeDetails.causeName === undefined ? {} : { causeName: causeDetails.causeName }),
-        ...(causeDetails.causeMessage === undefined
-          ? {}
-          : { causeMessage: causeDetails.causeMessage }),
+        ...(causeDetails.causeMessage === undefined ? {} : { causeMessage: causeDetails.causeMessage }),
         ...(params.scene.getLifecycleDebugDetails?.() ?? {}),
       },
       cause: params.cause,
@@ -592,9 +618,7 @@ export class SceneManager {
               deferredFromScene: requestedDuring.sceneName,
             }),
         ...(causeDetails.causeName === undefined ? {} : { causeName: causeDetails.causeName }),
-        ...(causeDetails.causeMessage === undefined
-          ? {}
-          : { causeMessage: causeDetails.causeMessage }),
+        ...(causeDetails.causeMessage === undefined ? {} : { causeMessage: causeDetails.causeMessage }),
       },
       cause: error,
     });
@@ -618,9 +642,14 @@ export class SceneManager {
   }
 
   private buildSceneContext(options?: SceneTransitionOptions): SceneContext {
-    return options?.params
-      ? { engine: this.engine, params: options.params }
-      : { engine: this.engine };
+    const controller = new AbortController();
+    const ctx: SceneContext = {
+      engine: this.engine,
+      signal: controller.signal,
+      ...(options?.params ? { params: options.params } : {}),
+    };
+    this.scopes.set(ctx, controller);
+    return ctx;
   }
 
   private top(): StackEntry | undefined {
@@ -711,13 +740,19 @@ export class SceneManager {
    */
   async destroy(): Promise<void> {
     this.destroyed = true;
+    for (const controller of this.scopes.values())
+      controller.abort(new DOMException('Scene manager disposed', 'AbortError'));
     await this.transitionQueue;
     this.detachTickerIfAttached();
     const errors: unknown[] = [];
     while (this.stack.length) {
       const entry = this.stack.pop();
       if (!entry) break;
-      try { await this.runExit(entry.scene, entry.ctx, 'pop'); } catch (error) { errors.push(error); }
+      try {
+        await this.runExit(entry.scene, entry.ctx, 'pop');
+      } catch (error) {
+        errors.push(error);
+      }
       this.cleanupEngineSceneRefs(entry.scene);
     }
     this.setCurrentScene(null);

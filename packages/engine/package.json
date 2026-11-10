@@ -1,6 +1,6 @@
 {
   "name": "@gamedevland/engine",
-  "version": "0.0.13-rings-texture.3",
+  "version": "0.0.13",
   "type": "module",
   "description": "HTML5 game engine SDK for AI-assisted web game development.",
   "license": "MIT",
@@ -23,7 +23,8 @@
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
-    "MIGRATION_RENDERERS.md"
+    "MIGRATION_RENDERERS.md",
+    "MIGRATION_RUNTIME.md"
   ],
   "publishConfig": {
     "access": "public"
@@ -163,7 +164,6 @@
     "rimraf": "^6.0.1",
     "tsc-alias": "^1.8.16"
   },
-  "private": true,
   "peerDependencies": {
     "pixi.js": "^8.16.0",
     "three": "^0.187.0",

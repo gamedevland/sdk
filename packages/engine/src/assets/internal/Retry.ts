@@ -1,47 +1,47 @@
+import { AbortableOperation } from '../../lifecycle/AbortableOperation';
 import { TimeoutAbortExecutor } from './TimeoutAbortExecutor';
-
-/**
- * Implements a simple retry with exponential backoff and a per-attempt timeout.
- */
+/** Bounded attempts with abortable backoff and independent per-attempt timeouts. */
 export class RetryHelper {
   private readonly timeoutExecutor: TimeoutAbortExecutor;
-
   constructor(
-    private retries: number,
-    private backoffMs: number,
-    private backoffFactor: number,
-    private timeoutMs: number,
+    private readonly retries: number,
+    private readonly backoffMs: number,
+    private readonly backoffFactor: number,
+    timeoutMs: number,
   ) {
-    this.timeoutExecutor = new TimeoutAbortExecutor(this.timeoutMs);
+    this.timeoutExecutor = new TimeoutAbortExecutor(timeoutMs);
   }
 
-  /**
-   * Executes the provided async function with retries.
-   * Each failed attempt waits for an increasing delay before retrying.
-   */
-  async withRetry<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
-    let attempt = 0;
+  async withRetry<T>(
+    fn: (signal: AbortSignal) => Promise<T>,
+    signal?: AbortSignal,
+    onLateValue?: (value: T) => void,
+  ): Promise<T> {
     let delay = this.backoffMs;
-    while (true) {
+    for (let attempt = 0; ; attempt++) {
+      signal?.throwIfAborted();
       try {
-        const res = await this.runAttempt(fn, attempt + 1);
-        return res;
-      } catch (err) {
-        attempt += 1;
-        if (attempt > this.retries) throw err;
-        await new Promise((r) => setTimeout(r, delay));
+        return await this.timeoutExecutor.run(attempt + 1, fn, signal, onLateValue);
+      } catch (error) {
+        signal?.throwIfAborted();
+        if (attempt >= this.retries) throw error;
+        await this.backoff(delay, signal);
         delay *= this.backoffFactor;
       }
     }
   }
 
-  /**
-   * Runs one attempt with timeout-driven cancellation.
-   */
-  private async runAttempt<T>(
-    fn: (signal: AbortSignal) => Promise<T>,
-    attemptNumber: number,
-  ): Promise<T> {
-    return await this.timeoutExecutor.run(attemptNumber, fn);
+  private async backoff(delay: number, signal?: AbortSignal): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await AbortableOperation.wait(
+        new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, delay);
+        }),
+        signal,
+      );
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   }
 }

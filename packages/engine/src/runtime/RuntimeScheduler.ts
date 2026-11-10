@@ -1,5 +1,6 @@
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
+import type { RuntimeDiagnostics } from '../diagnostics';
 import { RuntimeExecutionEngine } from './RuntimeExecutionEngine';
 import { RuntimeLifecycleDispatcher } from './RuntimeLifecycleDispatcher';
 import { RuntimeSchedulerLeakGuard } from './RuntimeSchedulerLeakGuard';
@@ -9,7 +10,6 @@ import { RuntimeSystemRegistry } from './RuntimeSystemRegistry';
 import type { RuntimeSystemRegistrationOptions } from './RuntimeSystemRegistry';
 import type { RuntimeSceneLifecycleContext, RuntimeSystem, RuntimeUpdateContext } from './types';
 import type { Scene } from '@engine/scenes/SceneManager';
-
 
 interface RuntimeTickOptions {
   ignorePause?: boolean;
@@ -24,8 +24,8 @@ export class RuntimeScheduler<TScene extends Scene = Scene> {
   private readonly lifecycle = new RuntimeLifecycleDispatcher<TScene>();
   private readonly execution: RuntimeExecutionEngine<TScene>;
 
-  constructor() {
-    this.execution = new RuntimeExecutionEngine(new RuntimeSchedulerProfilingMonitor());
+  constructor(diagnostics?: RuntimeDiagnostics) {
+    this.execution = new RuntimeExecutionEngine(new RuntimeSchedulerProfilingMonitor(), diagnostics);
   }
 
   register(system: RuntimeSystem<TScene>, options?: RuntimeSystemRegistrationOptions): void {

@@ -1,3 +1,4 @@
+import { AssetManagerLayoutAssetReader } from './AssetManagerLayoutAssetReader';
 /**
  * High-level helper that resolves a layout by name and builds a display tree.
  *
@@ -14,14 +15,6 @@ import type { BuildOptions, BuildResult } from '../build/BuildTypes';
 import type { LayoutRuntime } from '@engine/core';
 
 type BuildContextWithEngine = ReturnType<BuildContextFactory['create']> & { engine?: LayoutRuntime };
-
-class AssetManagerLayoutAssetReader {
-  constructor(private readonly engine: LayoutRuntime) {}
-
-  async getJson(id: string): Promise<unknown> {
-    return await this.engine.assets.getJson(id);
-  }
-}
 
 export class LayoutIntegrator {
   /**

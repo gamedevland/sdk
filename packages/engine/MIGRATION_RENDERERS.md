@@ -27,7 +27,8 @@ an old tarball without updating its consumer and any SDK adapter libraries.
 6. Replace `engine.app` dependencies with a narrow renderer capability. For
    node-owned atlas baking, use `engine.di.get(PixiServices.TextureGenerator)`;
    it exposes `generateTexture` only. Texture lifetime belongs to its component.
-   Particle, physics and texture lookup tokens moved to `PixiServices`.
+   Particle and texture lookup tokens live in `PixiServices`. Matter is opt-in
+   through `MatterPhysicsModule` and `PhysicsServices.Manager`; see MIGRATION_RUNTIME.md.
 7. Rebuild SDK adapter libraries against this API; do not allow a second engine
    or Pixi copy in their dependency tree. Both libraries should be peers.
 8. Update lint allowlists to permit the public `/renderers/pixi` entry point.
@@ -45,8 +46,8 @@ independently, share the clock and route UI hits before world hits.
 ## Lifecycle and behavior changes
 
 - `Engine.run` returns an engine handle; `destroy` is asynchronous and idempotent.
-- Concurrent init/start calls fail immediately. Destroy waits for a pending
-  lifecycle operation before releasing its resources.
+- Concurrent init/start calls fail immediately. Destroy aborts pending
+  lifecycle observation before releasing resources; SDK continuations check cancellation.
 - Scene service entry rolls back in reverse order, including the partially entered
   service. `onSceneExit` must tolerate partial initialization and release ownership.
 - Async service hooks must settle. An arbitrary non-cooperative user promise cannot
@@ -73,8 +74,8 @@ The adapter owns only the renderer and its Pixi texture, never scene resources.
 Resolution is capped at 2. Rendering across independent WebGL contexts copies
 pixels; this is a compatibility path for embedded content, not a zero-copy target.
 
-The paired local Vite package declares the engine as a peer, so installing the
-local renderer build never pulls a second engine copy from the registry.
+Vite tooling 0.2.2 declares engine 0.0.13 as a peer, so the project uses one engine
+copy for runtime and build tooling.
 
 Canvas texture coverage edges require `premultiply-alpha-on-upload` when Pixi
 uploads the browser canvas. Labeling the source as already premultiplied skips

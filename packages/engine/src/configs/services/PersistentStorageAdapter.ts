@@ -3,7 +3,7 @@ import { PersistentStorageCoordinator } from './PersistentStorageCoordinator';
 import type { IStorageAdapter } from '../core/types';
 
 export class PersistentStorageAdapter implements IStorageAdapter {
-  private readonly coordinator = PersistentStorageCoordinator.shared();
+  constructor(private readonly coordinator: PersistentStorageCoordinator) {}
 
   getItem(key: string): string | null {
     return this.coordinator.getItem(key);

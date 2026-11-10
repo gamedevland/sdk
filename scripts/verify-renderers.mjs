@@ -174,5 +174,21 @@ await check('pointer cancel and runtime pause cannot turn into a tap',()=>{
   send('pointerdown');manager.setPaused(true);manager.setPaused(false);send('pointerup');assert.equal(taps,0);
   send('pointerdown');send('pointerup');assert.equal(taps,1);manager.destroy();
 });
+await check('second-pointer movement remains observable without stealing the active drag',()=>{
+  const {engine}=setup();
+  engine.rendering.createHitTester=()=>({hitTest:()=>({}),addInteractive(){},removeInteractive(){},clearInteractive(){}});
+  engine.inputChannel={publish(){}};
+  const canvas=new EventTarget();
+  const manager=new m.InputManager(engine);manager.attach(canvas);
+  const events=[];
+  for(const type of ['dragstart','drag','dragend','pointermove','pointerup']) manager.on(type,event=>events.push([type,event.pointerId]));
+  const send=(type,id,x)=>{const e=new Event(type);Object.assign(e,{pointerId:id,pointerType:'touch',clientX:x,clientY:50,button:0,buttons:1,isPrimary:id===1});canvas.dispatchEvent(e);};
+  try {
+    send('pointerdown',1,0);send('pointermove',1,20);
+    send('pointerdown',2,0);send('pointermove',2,20);send('pointermove',2,30);
+    send('pointerup',2,30);send('pointermove',1,40);send('pointerup',1,40);
+    assert.deepEqual(events,[['dragstart',1],['pointermove',2],['pointermove',2],['pointerup',2],['drag',1],['dragend',1],['pointerup',1]]);
+  } finally {manager.destroy();}
+});
 console.log(`Renderer contracts: ${passed} scenarios passed. These are deterministic checks, not browser/device QA.`);
 } finally {await rm(temporary,{recursive:true,force:true});}

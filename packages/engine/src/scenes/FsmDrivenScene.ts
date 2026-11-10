@@ -1,13 +1,10 @@
+import { FsmDrivenSceneLifecycleEvents } from './FsmDrivenSceneLifecycleEvents';
+export { FsmDrivenSceneLifecycleEvents } from './FsmDrivenSceneLifecycleEvents';
 import { BaseScene } from './BaseScene';
 
 import type { SceneContext } from './SceneManager';
 import type { SceneConfig } from '@engine/core';
 import type { SceneEvent } from '@engine/fsm';
-
-export class FsmDrivenSceneLifecycleEvents {
-  static readonly SceneReady = 'SCENE_READY';
-  static readonly SceneTick = 'SCENE_TICK';
-}
 
 /**
  * Base scene that bridges scene lifecycle into the scene FSM.
@@ -26,7 +23,13 @@ export abstract class FsmDrivenScene extends BaseScene {
   }
 
   protected override afterSceneServicesTick(dt: number): void {
-    void this.dispatchToFSM({ type: FsmDrivenSceneLifecycleEvents.SceneTick, payload: { dt } });
+    void this.dispatchToFSM({ type: FsmDrivenSceneLifecycleEvents.SceneTick, payload: { dt } }).catch(
+      (error) => {
+        if (this.runtime.diagnostics)
+          this.runtime.diagnostics.report({ kind: 'error', source: 'scene-tick', error });
+        else console.error('Scene tick dispatch failed', error);
+      },
+    );
   }
 
   override async onExit(ctx: SceneContext): Promise<void> {

@@ -9,7 +9,7 @@ class ActivityDocument extends EventTarget {
   hasFocus(): boolean { return this.focused; }
 }
 
-test('focus loss silently pauses runtime and cannot override other pause reasons', () => {
+test('visible embeds ignore focus loss while visibility and lifecycle preserve other pause reasons', () => {
   const document = new ActivityDocument(), window = new EventTarget();
   const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
   const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
@@ -25,8 +25,8 @@ test('focus loss silently pauses runtime and cannot override other pause reasons
     controller.attach(); controller.attach();
     assert.equal(controller.isPaused(), false);
     document.focused = false; window.dispatchEvent(new Event('blur'));
-    assert.equal(controller.isPaused(), true);
-    assert.deepEqual(reasons, ['pageInactive']);
+    assert.equal(controller.isPaused(), false);
+    assert.deepEqual(reasons, []);
     controller.setManualPaused(true);
     document.focused = true; window.dispatchEvent(new Event('focus'));
     assert.equal(controller.isPaused(), true);
@@ -38,9 +38,20 @@ test('focus loss silently pauses runtime and cannot override other pause reasons
     assert.equal(controller.isPaused(), true, 'Focus must not resume a hidden page');
     document.visibilityState = 'visible'; document.dispatchEvent(new Event('visibilitychange'));
     assert.equal(controller.isPaused(), false);
-    assert.deepEqual(pauses, [true, false, true, false]);
+    controller.setPlatformPaused(true);
+    window.dispatchEvent(new Event('pagehide'));
+    assert.deepEqual(reasons, ['pageInactive', 'platform']);
+    controller.setAdBreakPaused(true);
+    window.dispatchEvent(new Event('pageshow'));
+    assert.deepEqual(reasons, ['platform', 'adBreak']);
+    controller.setPlatformPaused(false);
+    assert.equal(controller.isPaused(), true);
+    controller.setAdBreakPaused(false);
+    assert.equal(controller.isPaused(), false);
+    assert.deepEqual(pauses, [true, false, true, false, true, false]);
     controller.dispose(); controller.dispose();
-    window.dispatchEvent(new Event('blur'));
+    window.dispatchEvent(new Event('pagehide'));
+    document.visibilityState = 'hidden'; document.dispatchEvent(new Event('visibilitychange'));
     assert.equal(controller.isPaused(), false, 'Disposed monitors release their listeners');
   } finally {
     controller.dispose();

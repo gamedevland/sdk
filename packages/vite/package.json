@@ -1,6 +1,6 @@
 {
   "name": "@gamedevland/vite",
-  "version": "0.2.2-rings-texture.3",
+  "version": "0.2.2",
   "type": "module",
   "description": "Vite build tooling for Gamedev Land HTML5 games.",
   "license": "MIT",
@@ -50,7 +50,7 @@
   },
   "peerDependencies": {
     "vite": "^7.1.0 || ^8.0.0",
-    "@gamedevland/engine": "0.0.13-rings-texture.3"
+    "@gamedevland/engine": "0.0.13"
   },
   "repository": {
     "type": "git",
@@ -60,6 +60,5 @@
   "homepage": "https://github.com/gamedevland/sdk/tree/main/packages/vite#readme",
   "bugs": {
     "url": "https://github.com/gamedevland/sdk/issues"
-  },
-  "private": true
+  }
 }

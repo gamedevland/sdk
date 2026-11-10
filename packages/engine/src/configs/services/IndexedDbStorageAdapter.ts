@@ -167,7 +167,7 @@ export class IndexedDbStorageAdapter {
       databaseName: this.databaseName,
       operation,
       key,
-      error,
+      error: error instanceof Error ? { name: error.name, message: error.message } : error,
     });
   }
 }

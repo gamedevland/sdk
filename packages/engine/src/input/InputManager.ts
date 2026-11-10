@@ -1,4 +1,4 @@
-import { defaultInputConfig, type InputConfig } from './config';
+import { InputDefaults, type InputConfig } from './config';
 import { InputRouter } from './InputRouter';
 import type { HitTester } from '../rendering/types';
 import { PointerTracker } from './PointerTracker';
@@ -207,6 +207,8 @@ export class InputManager {
     // If not dragging yet but threshold exceeded -> start dragging
     if (!this.drags.isDragging(ev.pointerId) && this.drags.shouldStart(st)) {
       if (this.drags.hasActiveDrag()) {
+        const base = this.buildPointerBase(ev, time, { x: st.virtualX, y: st.virtualY }, hit.target);
+        this.emit({ ...base, type: 'pointermove' });
         return;
       }
       this.drags.start(ev.pointerId);
@@ -335,7 +337,7 @@ export class InputManager {
    * Builds a normalized configuration by applying defaults and user overrides.
    */
   private buildConfig(cfg?: InputConfig) {
-    return { ...defaultInputConfig, ...(cfg ?? {}) };
+    return { ...InputDefaults.config, ...(cfg ?? {}) };
   }
 
   private finalizePointer(pointerId: number): void {
@@ -374,10 +376,7 @@ export class InputManager {
     return 'mouse';
   }
 
-  private reportUnexpectedTerminalPointerEvent(
-    type: 'pointerup' | 'pointercancel',
-    id: number,
-  ): void {
+  private reportUnexpectedTerminalPointerEvent(type: 'pointerup' | 'pointercancel', id: number): void {
     console.warn(`[InputManager] Ignored ${type} for unknown pointerId=${String(id)}`);
   }
 }

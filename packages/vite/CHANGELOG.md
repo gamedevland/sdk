@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 — 2026-11-10
+
+- Generate projects with explicit Pixi renderer setup and public renderer imports.
+- Declare engine 0.0.13 as a peer to avoid duplicate engine copies.
+- Resolve scaffold engine versions from that peer contract; fix template regression checks.
+- Update template archive dependencies to remove the vulnerable legacy glob chain.
+
 ## 0.2.1 — 2026-11-07
 
 - Support `VITE_PLATFORM=playgama` and inject the official Playgama Bridge v2 script.

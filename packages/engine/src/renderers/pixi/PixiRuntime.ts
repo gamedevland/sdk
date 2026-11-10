@@ -1,4 +1,6 @@
-import { Application, Container as NativeContainer, extensions, PrepareSystem } from "pixi.js";
+import { Application, Container as NativeContainer, WebGLRenderer } from "pixi.js";
+import { RendererWarmup } from "../../rendering/RendererWarmup";
+import { PixiScenePreparer } from "./PixiScenePreparer";
 import { Container } from "../../layouts/nodes/Container";
 import { NodeBase as PixiNode } from "../../layouts/nodes/NodeBase";
 import { NodeHitTester } from "./NodeHitTester";
@@ -13,10 +15,10 @@ import type { SceneLayout } from "../../layouts/scene/SceneLayout";
 import type { RenderRuntime } from "../../rendering/types";
 import type { ScreenConfig, ScreenStateSnapshot } from "../../screen/types";
 export class PixiRuntime implements RenderRuntime {
-  readonly mode = "pixi";
+  readonly mode = 'pixi';
   private initialized = false;
   private disposed = false;
-  private warming = false;
+  private warmup: RendererWarmup | undefined;
   get canvases(): readonly HTMLCanvasElement[] {
     return [this.canvas];
   }
@@ -39,25 +41,24 @@ export class PixiRuntime implements RenderRuntime {
     return this.app.renderer.resolution;
   }
   async init(background: string): Promise<void> {
-    if (this.disposed) throw new Error("Pixi runtime is disposed");
+    if (this.disposed) throw new Error('Pixi runtime is disposed');
     if (this.initialized) return;
-    extensions.add(PrepareSystem);
     await this.app.init({
-      background: this.transparent ? "#000000" : background,
+      background: this.transparent ? '#000000' : background,
       backgroundAlpha: this.transparent ? 0 : 1,
-      preference: "webgl",
+      preference: 'webgl',
       antialias: true,
       autoStart: false,
     });
+    if (this.disposed) {
+      this.app.destroy(true, { children: true });
+      throw new Error('Pixi runtime disposed during initialization');
+    }
     this.initialized = true;
     this.app.ticker.stop();
   }
   resize(snapshot: ScreenStateSnapshot, resolution: number): void {
-    this.app.renderer.resize(
-      snapshot.canvas.width,
-      snapshot.canvas.height,
-      resolution,
-    );
+    this.app.renderer.resize(snapshot.canvas.width, snapshot.canvas.height, resolution);
     this.canvas.style.width = `${snapshot.viewport.width}px`;
     this.canvas.style.height = `${snapshot.viewport.height}px`;
     this.pipeline.sync(snapshot);
@@ -79,37 +80,60 @@ export class PixiRuntime implements RenderRuntime {
   }
   prepareScene(_layout: SceneLayout, _cameraPath?: string): void {}
   renderFrame(): void {
-    if (!this.warming) this.pipeline.renderFrame();
+    if (!this.warmup) this.pipeline.renderFrame();
   }
   async warmupScene(): Promise<void> {
     if (!this.initialized || this.disposed) throw new Error("Pixi runtime is not active");
-    this.warming = true;
+    this.assertContextActive();
+    if (this.warmup) throw new Error("Pixi warmup is already running");
+    const warmup = new RendererWarmup(this.canvas, "Pixi");
+    this.warmup = warmup;
     try {
-      // Prepare traverses hidden controls too and limits uploads per tick.
-      await this.app.renderer.prepare.upload(this.pipeline.getSceneRoot());
+      // Traverse hidden controls and upload in bounded, cancellable timer batches.
+      const preparer = new PixiScenePreparer(this.app.renderer);
+      await warmup.wait(() => preparer.prepare(this.pipeline.getSceneRoot(), warmup.signal));
+      warmup.signal.throwIfAborted();
+      this.assertContextActive();
       if (!this.disposed) this.pipeline.renderFrame();
+      this.assertContextActive();
     } finally {
-      this.warming = false;
+      warmup.dispose();
+      if (this.warmup === warmup) this.warmup = undefined;
     }
   }
+  private assertContextActive(): void {
+    const renderer = this.app.renderer;
+    if (renderer instanceof WebGLRenderer && renderer.gl.isContextLost()) {
+      throw new Error("Pixi warmup requires an active WebGL context");
+    }
+  }
+  getWarmupStage(): string | undefined { return this.warmup ? "pixi:upload-resources" : undefined; }
   tick(dt: number): void {
     this.particles.tick(dt);
   }
   cleanup(root: NodeBase): void {
+    this.warmup?.cancel();
     this.particles.destroyInSubtree(root.requireNode(PixiNode).view);
   }
   destroy(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.warmup?.cancel();
     const errors: unknown[] = [];
     const operations = [
       () => this.particles.destroyAll(),
-      () => { if (this.initialized) this.app.destroy(true, { children: true }); },
+      () => {
+        if (this.initialized) this.app.destroy(true, { children: true });
+      },
       () => this.pipeline.destroy(),
       () => this.textures?.destroy(),
     ];
     for (const operation of operations) {
-      try { operation(); } catch (error) { errors.push(error); }
+      try {
+        operation();
+      } catch (error) {
+        errors.push(error);
+      }
     }
     if (errors.length) throw new AggregateError(errors, 'Pixi renderer disposal failed');
   }

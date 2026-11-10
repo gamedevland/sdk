@@ -1,9 +1,12 @@
 import { DiBootstrapValidator } from '@engine/di/DiBootstrapValidator';
 import { SystemProviderRegistrar } from '@engine/di/providers';
+import { PresentationScheduler } from '../runtime/PresentationScheduler';
+import type { RuntimeDiagnostics } from '../diagnostics';
 import { FrameDriver } from '../rendering/FrameDriver';
 import type { RenderRuntime } from '../rendering/types';
 import type { NodeBase } from '../layouts/NodeBase';
 
+import { PersistentStorageCoordinator, PersistentStorageAdapter } from '../configs';
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '../errors';
 import { BaseScene } from '../scenes/BaseScene';
 
@@ -84,6 +87,8 @@ export class Engine
   private static readonly RuntimePausedChangedEvent = 'ENGINE__RUNTIME_PAUSED_CHANGED';
   private static readonly EmptySceneParams: Readonly<Record<string, unknown>> = Object.freeze({});
   readonly rendering: RenderRuntime;
+  readonly diagnostics: RuntimeDiagnostics;
+  readonly presentation = new PresentationScheduler();
   readonly frames: FrameDriver;
   readonly audio: AudioManager;
   readonly assets: AssetManager;
@@ -103,6 +108,8 @@ export class Engine
   readonly config: { data?: Record<string, unknown>; layouts?: GameConfig['layouts'] } = {};
   readonly configStore: ConfigStore;
   private readonly localesService: LocalesService;
+  private readonly persistenceCoordinator = new PersistentStorageCoordinator();
+  readonly storage = new PersistentStorageAdapter(this.persistenceCoordinator);
   private readonly diContainer: DiContainer;
   private readonly diBootstrapValidator = new DiBootstrapValidator();
   private readonly configInvariantValidator = new EngineConfigInvariantValidator();
@@ -115,9 +122,11 @@ export class Engine
   private readonly runtimeController: EnginePauseController;
   private readonly lifecycleManager: EngineLifecycleManager;
 
+  private readonly moduleDisposers: readonly (() => void)[];
   private disposal: Promise<void> | undefined;
   destroy(): Promise<void> {
-    this.disposal ??= this.dispose(); return this.disposal;
+    this.disposal ??= this.dispose();
+    return this.disposal;
   }
   private async dispose(): Promise<void> {
     this.frames.stop();
@@ -125,13 +134,31 @@ export class Engine
     this.frames.stop();
     const errors: unknown[] = [];
     const operations = [
-      () => this.input.destroy(), () => this.browserInputGuard.dispose(),
-      () => this.runtimeController.dispose(), () => this.eventBridge.dispose(),
-      () => this.scenes.destroy(), () => this.rendering.root.destroy(),
-      () => this.tweens.dispose(), () => this.audio.dispose(), () => this.platform.dispose(),
-      () => this.screen.destroy(), () => this.rendering.destroy(), () => this.assets.destroy(),
+      () => this.input.destroy(),
+      () => this.browserInputGuard.dispose(),
+      () => this.runtimeController.dispose(),
+      () => this.eventBridge.dispose(),
+      () => this.scenes.destroy(),
+      () => this.rendering.root.destroy(),
+      () => this.presentation.clear(),
+      () => this.events.clear(),
+      () => this.frames.dispose(),
+      () => this.tweens.dispose(),
+      () => this.audio.dispose(),
+      () => this.platform.dispose(),
+      ...[...this.moduleDisposers].reverse(),
+      () => this.screen.destroy(),
+      () => this.rendering.destroy(),
+      () => this.assets.destroy(),
     ];
-    for (const operation of operations) { try { await operation(); } catch (error) { errors.push(error); } }
+    for (const operation of operations) {
+      try {
+        await operation();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    this.diagnostics.clear();
     if (errors.length) throw new AggregateError(errors, 'Engine disposal failed');
   }
 
@@ -159,6 +186,7 @@ export class Engine
     const engineOptions: EngineOptions = {
       container,
       renderer: Engine.requireRenderer(config),
+      ...(config.system.modules ? { modules: config.system.modules } : {}),
       bundles: config.assets.bundles,
       ...(config.system?.canvasBackground ? { background: config.system.canvasBackground } : {}),
       ...(config.system?.screen ? { screen: config.system.screen } : {}),
@@ -166,16 +194,18 @@ export class Engine
       ...(config.system?.audio ? { audio: config.system.audio } : {}),
     };
     const engine = new Engine(engineOptions);
-    const initOptions = config.system?.canvasBackground
-      ? { background: config.system.canvasBackground }
-      : {};
+    const initOptions = config.system?.canvasBackground ? { background: config.system.canvasBackground } : {};
     try {
       await engine.init(initOptions);
       engine.mount(container);
       await engine.start(config);
       return engine;
     } catch (cause) {
-      try { await engine.destroy(); } catch (cleanup) { throw new AggregateError([cause, cleanup], 'Engine startup and cleanup failed'); }
+      try {
+        await engine.destroy();
+      } catch (cleanup) {
+        throw new AggregateError([cause, cleanup], 'Engine startup and cleanup failed');
+      }
       throw cause;
     }
   }
@@ -187,8 +217,10 @@ export class Engine
   constructor(options: EngineOptions) {
     const subsystemFactory = new EngineSubsystemFactory();
     const staticSubsystems = subsystemFactory.createStatic(options);
+    this.moduleDisposers = staticSubsystems.moduleDisposers;
+    this.diagnostics = staticSubsystems.diagnostics;
     this.rendering = staticSubsystems.rendering;
-    this.frames = new FrameDriver(() => this.rendering.renderFrame());
+    this.frames = new FrameDriver(() => this.rendering.renderFrame(), this.diagnostics);
     this.assets = staticSubsystems.assets;
     this.audio = staticSubsystems.audio;
     this.events = staticSubsystems.events;
@@ -210,9 +242,7 @@ export class Engine
     this.configStore = runtimeBoundSubsystems.configStore;
     this.localesService = runtimeBoundSubsystems.localesService;
     this.configBootstrapper = new ConfigBootstrapper(this.assets, this.configStore);
-    this.runtimeBindings = new EngineRuntimeBindings(
-      () => this.scenes.getActiveSceneLayout(),
-    );
+    this.runtimeBindings = new EngineRuntimeBindings(() => this.scenes.getActiveSceneLayout());
     this.eventBridge = new EngineEventBridge({
       events: this.events,
       screen: this.screen,
@@ -223,12 +253,15 @@ export class Engine
       onActivityChanged: (reasons) => {
         this.activity.update(reasons);
         // Some platforms require audio to continue during the ad auction.
-        this.audio.setRuntimePaused(reasons.some((reason) =>
-          reason !== 'adBreak' || this.platform.shouldMuteAudioOnAdRequest()));
+        this.audio.setRuntimePaused(
+          reasons.some((reason) => reason !== 'adBreak' || this.platform.shouldMuteAudioOnAdRequest()),
+        );
       },
     });
     this.platform.setAdBreakHooks(
-      new AdBreakRuntimePolicy((paused: boolean) => this.runtimeController.setAdBreakPaused(paused)).createHooks(),
+      new AdBreakRuntimePolicy((paused: boolean) =>
+        this.runtimeController.setAdBreakPaused(paused),
+      ).createHooks(),
     );
     this.platform.setRuntimeHooks({
       onPauseRequested: this.handlePlatformPauseRequested.bind(this),
@@ -251,7 +284,7 @@ export class Engine
   }
 
   /**
-   * Appends the PixiJS canvas to the specified container.
+   * Appends the renderer surfaces to the specified container.
    */
   mount(container: HTMLElement): void {
     this.lifecycleManager.mount(container);
@@ -265,7 +298,8 @@ export class Engine
     await this.lifecycleManager.start(config);
   }
 
-  private async initializeRenderer(initOptions: { background?: string }): Promise<void> {
+  private async initializeRenderer(initOptions: { background?: string }, signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted();
     try {
       await this.rendering.init(initOptions.background ?? '#000000');
     } catch (cause) {
@@ -278,9 +312,12 @@ export class Engine
       });
     }
 
+    signal.throwIfAborted();
     await this.screen.init();
+    signal.throwIfAborted();
     this.screen.setRenderRequester(this.requestRenderFrame.bind(this));
     await this.platform.init();
+    signal.throwIfAborted();
     this.audio.attachInteractionTarget(this.rendering.canvas);
     this.input.attach(this.rendering.canvas);
     this.browserInputGuard.attach(this.rendering.canvas);
@@ -293,7 +330,8 @@ export class Engine
     for (const canvas of this.rendering.canvases) container.appendChild(canvas);
   }
 
-  private async startRuntime(startConfig: GameConfig): Promise<void> {
+  private async startRuntime(startConfig: GameConfig, signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted();
     this.bootConfigPlan = new EngineBootConfigPlan(startConfig);
     this.sceneConfigMap = startConfig.scenes.map;
     this.config.layouts = startConfig.layouts;
@@ -321,10 +359,12 @@ export class Engine
       new AssetBundlesBootTask(this.assets, startConfig),
       new ConfigBootstrapBootTask(this.configBootstrapper, bootConfigPlan),
       new LocalesBootstrapBootTask(this.localesService, this.platform),
-      new PersistenceBootstrapBootTask(startConfig.system, this.platform),
-    ]).run();
+      new PersistenceBootstrapBootTask(startConfig.system, this.platform, this.persistenceCoordinator),
+    ]).run(signal);
+    signal.throwIfAborted();
     this.audio.applyBootstrapConfig(startConfig.system?.audio, this.configStore);
     await this.startScene(startConfig.scenes.initial);
+    signal.throwIfAborted();
     if (startConfig.system?.boot?.autoLoadingFinished !== false) {
       this.platform.loadingFinished();
     }
@@ -404,6 +444,7 @@ export class Engine
       runtimePhysicsStepService: this.runtimePhysicsStepService,
       configStore: this.configStore,
       localesService: this.localesService,
+      persistentStorage: this.storage,
     });
   }
 
@@ -516,9 +557,7 @@ export class Engine
           method: 'Engine.startScene',
           initialSceneKey,
           ...(causeDetails.causeName === undefined ? {} : { causeName: causeDetails.causeName }),
-          ...(causeDetails.causeMessage === undefined
-            ? {}
-            : { causeMessage: causeDetails.causeMessage }),
+          ...(causeDetails.causeMessage === undefined ? {} : { causeMessage: causeDetails.causeMessage }),
         },
         cause,
       });
@@ -574,5 +613,4 @@ export class Engine
     }
     return {};
   }
-
 }
