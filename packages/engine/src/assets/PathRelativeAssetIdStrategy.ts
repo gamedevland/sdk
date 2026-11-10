@@ -38,4 +38,3 @@ export class PathRelativeAssetIdStrategy implements AssetIdStrategy {
     return filePath.replaceAll('\\', '/');
   }
 }
-

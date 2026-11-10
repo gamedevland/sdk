@@ -14,4 +14,3 @@ export class DefaultBundleBuildPolicy implements BundleBuildPolicy {
     ];
   }
 }
-

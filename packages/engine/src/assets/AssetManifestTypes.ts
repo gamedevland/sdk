@@ -31,4 +31,3 @@ export interface AssetManifestBuilderOptions {
   idStrategy?: AssetIdStrategy;
   policy?: BundleBuildPolicy;
 }
-
