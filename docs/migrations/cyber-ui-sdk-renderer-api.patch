@@ -1,0 +1,30 @@
+--- a/src/PanelReveal.ts
++++ b/src/PanelReveal.ts
+@@ -1,3 +1,4 @@
++import { NodeBase } from '@gamedevland/engine/renderers/pixi';
+ import { PanelTransition } from '@gamedevland/cyber-ui';
+ import { BaseTypedAction } from '@gamedevland/engine/layouts';
+ import { SchemaDecoder as S } from '@gamedevland/engine/validation';
+@@ -26,8 +27,10 @@
+ /** Reveals a dedicated animation wrapper relative to its attached layout transform. */
+ export class PanelReveal extends BaseTypedAction<
+   InferDecoded<typeof configDecoder>,
+-  InferDecoded<typeof inputDecoder>
++  InferDecoded<typeof inputDecoder>,
++  NodeBase
+ > {
++  protected readonly nodeType = NodeBase;
+   protected readonly configDecoder = configDecoder;
+   protected readonly inputDecoder = inputDecoder;
+   private origin?: Transform;
+--- a/src/ToolkitComponent.ts
++++ b/src/ToolkitComponent.ts
+@@ -1,7 +1,7 @@
+ import { BaseTypedComponent } from '@gamedevland/engine/layouts';
+ 
+ import type { UiEffect } from '@gamedevland/cyber-ui';
+-import type { NodeBase } from '@gamedevland/engine/layouts';
++import type { NodeBase } from '@gamedevland/engine/renderers/pixi';
+ 
+ export type UiViewport = {
+   readonly width: number;

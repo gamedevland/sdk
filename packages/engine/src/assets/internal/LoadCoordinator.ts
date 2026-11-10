@@ -13,6 +13,7 @@ interface AssetLoadCoordinatorDeps {
 }
 
 export class AssetLoadCoordinator {
+  private disposed = false;
   private readonly loaders: LoaderRegistry;
   private readonly store: AssetStore;
   private readonly retry: RetryConfig;
@@ -29,12 +30,14 @@ export class AssetLoadCoordinator {
   }
 
   async loadDescriptors(descriptors: AssetDescriptor[]): Promise<void> {
+    if (this.disposed) throw new Error('Asset loader is disposed');
     const queue = [...descriptors];
 
     const runWithConcurrency = async () => {
       const running: Promise<void>[] = [];
 
       const next = async (descriptor: AssetDescriptor) => {
+        if (this.disposed) return;
         const meta = this.store.ensureMeta(descriptor);
         if (meta.data !== undefined) {
           return;
@@ -71,6 +74,11 @@ export class AssetLoadCoordinator {
     await runWithConcurrency();
   }
 
+  async destroy(): Promise<void> {
+    this.disposed = true;
+    await Promise.allSettled(this.inFlightLoads.values());
+  }
+
   private async loadWithSingleFlight(
     descriptor: AssetDescriptor,
     loader: Loader,
@@ -103,6 +111,7 @@ export class AssetLoadCoordinator {
     const data = await helper.withRetry((attemptSignal) =>
       loader.load(descriptor, attemptSignal, this.baseURL),
     );
+    if (this.disposed) { loader.dispose?.(data); return; }
     meta.data = data;
     meta.lastUsedAt = Date.now();
     if (loader.dispose) meta.dispose = loader.dispose.bind(loader);

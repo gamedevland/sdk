@@ -12,10 +12,7 @@ export * from './errors';
 export * from './events';
 export * from './fsm';
 export * from './input';
-export * from './interactions';
 export * from './layouts';
-export * from './physics';
-export * from './particles';
 export * from './platforms';
 export * from './prefabs';
 export * from './scenes';
@@ -33,3 +30,5 @@ export type {
   ValidationResult as StructuralValidationResult,
   Validator,
 } from './validation';
+
+export * from './rendering';

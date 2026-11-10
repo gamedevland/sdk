@@ -10,7 +10,7 @@ import type {
 } from './SceneService';
 import type { DiContainerInterface, Token } from '@engine/di/types';
 
-type HostState = 'idle' | 'running' | 'disposed';
+type HostState = 'idle' | 'initializing' | 'running' | 'disposing' | 'disposed';
 
 interface ResolvedSceneService {
   token: Token<SceneService>;
@@ -20,6 +20,10 @@ interface ResolvedSceneService {
 export class SceneServiceHost {
   private readonly resolved: ResolvedSceneService[] = [];
   private state: HostState = 'idle';
+  private readonly entered: ResolvedSceneService[] = [];
+  private initialization: Promise<void> | undefined;
+  private disposal: Promise<void> | undefined;
+  private disposalRequested = false;
   private lifecycleHook: 'onSceneEnter' | 'onSceneExit' | undefined;
   private lifecycleToken: string | undefined;
 
@@ -39,19 +43,36 @@ export class SceneServiceHost {
       });
     }
 
-    this.resolveServices();
-    for (const entry of this.resolved) {
-      if (!entry.service.onSceneEnter) continue;
-      try {
-        this.setLifecycleDebugState(entry.token, 'onSceneEnter');
-        await entry.service.onSceneEnter(ctx);
-      } catch (cause) {
-        throw this.createLifecycleError(entry.token, 'onSceneEnter', cause);
-      } finally {
-        this.clearLifecycleDebugState();
+    this.state = 'initializing';
+    this.initialization = this.enterServices(ctx);
+    await this.initialization;
+  }
+
+  private async enterServices(ctx: SceneServiceContext): Promise<void> {
+    try {
+      this.resolveServices();
+      for (const entry of this.resolved) {
+        if (this.disposalRequested) throw new Error('Scene service initialization cancelled by disposal');
+        this.entered.push(entry);
+        if (!entry.service.onSceneEnter) continue;
+        try {
+          this.setLifecycleDebugState(entry.token, 'onSceneEnter');
+          await entry.service.onSceneEnter(ctx);
+        } catch (cause) {
+          throw this.createLifecycleError(entry.token, 'onSceneEnter', cause);
+        } finally {
+          this.clearLifecycleDebugState();
+        }
       }
+      if (this.disposalRequested) throw new Error('Scene service initialization cancelled by disposal');
+      this.state = 'running';
+    } catch (cause) {
+      this.state = 'disposing';
+      try { await this.exitServices(ctx); }
+      catch (cleanup) { throw new AggregateError([cause, cleanup], 'Scene service entry and rollback failed'); }
+      finally { this.state = 'disposed'; }
+      throw cause;
     }
-    this.state = 'running';
   }
 
   tick(ctx: SceneServiceTickContext): void {
@@ -97,44 +118,36 @@ export class SceneServiceHost {
     });
   }
 
-  async dispose(ctx: SceneServiceContext): Promise<void> {
-    if (this.state === 'disposed') {
-      throw EngineErrorFactory.invariant({
-        code: EngineErrorCode.SceneInvalidState,
-        subsystem: EngineSubsystem.Scene,
-        message: 'SceneServiceHost is already disposed',
-        details: { method: 'SceneServiceHost.dispose', sceneKey: this.sceneKey },
-      });
-    }
-    if (this.state === 'idle') {
-      throw EngineErrorFactory.invariant({
-        code: EngineErrorCode.SceneInvalidState,
-        subsystem: EngineSubsystem.Scene,
-        message: 'SceneServiceHost is not initialized',
-        details: { method: 'SceneServiceHost.dispose', sceneKey: this.sceneKey },
-      });
-    }
+  dispose(ctx: SceneServiceContext): Promise<void> {
+    this.disposalRequested = true;
+    this.disposal ??= this.finishDisposal(ctx);
+    return this.disposal;
+  }
 
-    let firstError: Error | undefined;
-    for (let i = this.resolved.length - 1; i >= 0; i -= 1) {
-      const entry = this.resolved[i];
-      if (!entry) continue;
-      if (!entry.service.onSceneExit) continue;
+  private async finishDisposal(ctx: SceneServiceContext): Promise<void> {
+    // An in-flight hook retains its context until it settles and rolls back.
+    await this.initialization?.catch(() => undefined);
+    this.state = 'disposing';
+    try { await this.exitServices(ctx); }
+    finally { this.state = 'disposed'; }
+  }
+
+  private async exitServices(ctx: SceneServiceContext): Promise<void> {
+    const errors: unknown[] = [];
+    while (this.entered.length) {
+      const entry = this.entered.pop();
+      if (!entry?.service.onSceneExit) continue;
       try {
         this.setLifecycleDebugState(entry.token, 'onSceneExit');
         await entry.service.onSceneExit(ctx);
       } catch (cause) {
-        if (!firstError) {
-          firstError = this.createLifecycleError(entry.token, 'onSceneExit', cause);
-        }
+        errors.push(this.createLifecycleError(entry.token, 'onSceneExit', cause));
       } finally {
         this.clearLifecycleDebugState();
       }
     }
-    this.state = 'disposed';
-    if (firstError) {
-      throw firstError;
-    }
+    this.resolved.length = 0;
+    if (errors.length) throw new AggregateError(errors, 'Scene service cleanup failed');
   }
 
   private resolveServices(): void {

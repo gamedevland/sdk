@@ -1,9 +1,7 @@
 import type { AssetId } from '../../assets/types';
-import type * as PIXI from 'pixi.js';
+import type { NodeBase } from '../NodeBase';
 /** Base interface for display nodes exposing a native `view`. */
-export interface DisplayNode {
-  readonly view: PIXI.Container;
-}
+export type DisplayNode = NodeBase;
 
 /** Marker interface for container-like nodes. `_kind` is a soft tag used for RTTI. */
 export interface ContainerNode extends DisplayNode {

@@ -1,0 +1,2 @@
+# Unified diff context markers are required patch data, including on empty lines.
+docs/migrations/*.patch -whitespace

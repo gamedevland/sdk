@@ -1,13 +1,12 @@
 import type { TimelineBuilder, TweenOptions, TweenTarget } from './types';
-import type { gsap } from 'gsap';
-import type * as PIXI from 'pixi.js';
+import type {gsap} from 'gsap';
 
 export class GsapTimelineBuilder implements TimelineBuilder {
   /**
    * Wraps a GSAP timeline and exposes a minimal, engine-friendly API
    * for building sequences of animations.
    */
-  constructor(private readonly tl: gsap.core.Timeline) {}
+  constructor(private readonly tl: ReturnType<typeof gsap.timeline>) {}
   /**
    * Append a tween that animates properties to their target values.
    */
@@ -35,8 +34,8 @@ export class GsapTimelineBuilder implements TimelineBuilder {
     return this;
   }
 
-  private unwrap(target: TweenTarget): PIXI.ContainerChild {
-    return this.isViewWrapper(target) ? target.view : target;
+  private unwrap(target: TweenTarget): object {
+    return 'view' in target && typeof target.view === 'object' && target.view !== null ? target.view : target;
   }
   /**
    * Insert a named label that can be referenced to seek or align steps.
@@ -60,9 +59,6 @@ export class GsapTimelineBuilder implements TimelineBuilder {
     return rest;
   }
 
-  private isViewWrapper(target: TweenTarget): target is { view: PIXI.ContainerChild } {
-    return typeof target === 'object' && target !== null && 'view' in target;
-  }
 }
 
 export default GsapTimelineBuilder;

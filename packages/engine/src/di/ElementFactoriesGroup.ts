@@ -4,7 +4,7 @@ import { DiTokens } from './tokens';
 import type { Provider } from './types';
 import type { AssetManager } from '@engine/assets/AssetManager';
 import type { CreatedElement, ElementFactoryContext } from '@engine/layouts/build/BuildTypes';
-import type { DisplayNode } from '@engine/layouts/nodes/types';
+import type { NodeBase as DisplayNode } from '@engine/layouts/NodeBase';
 import type { ElementConfig } from '@engine/layouts/types';
 
 /**

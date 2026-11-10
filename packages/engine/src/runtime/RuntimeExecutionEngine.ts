@@ -48,10 +48,15 @@ export class RuntimeExecutionEngine<TScene extends Scene = Scene> {
     }
 
     const frameStart = performance.now();
+    let systemDurationMs = 0;
     for (const system of systems) {
+      const systemStart = performance.now();
       system.update(dt, ctx);
+      systemDurationMs += performance.now() - systemStart;
     }
-    this.profilingMonitor.onFrameEnd(performance.now() - frameStart);
+    // System work is not scheduler overhead. Keep only dispatch and profiling cost.
+    const schedulerDurationMs = Math.max(0, performance.now() - frameStart - systemDurationMs);
+    this.profilingMonitor.onFrameEnd(schedulerDurationMs);
   }
 
   private validateDt(dt: number, method: RuntimeTickMethod): void {

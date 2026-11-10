@@ -20,6 +20,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run typecheck
+      - run: npm test --workspace @gamedevland/engine
+      - run: npm run test:renderers
+      - run: npm run test:archive-dependency
+      - run: npm run test:stability
+      - run: npm run test:audio
+      - run: npm run test:locales
+      - run: npm run test:crazygames
       - run: npm run test:playgama
       - run: npm run test:project-template
       - run: npm run test:resource-cleanup --workspace @gamedevland/engine

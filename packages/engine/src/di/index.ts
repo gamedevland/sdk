@@ -15,5 +15,5 @@ export * from './SceneDiDefinition';
 export * from './SceneServiceTokenRegistry';
 export * from './ValuesGroup';
 export * from './ValuesGroupRegistrar';
-export * from './providers';
+export { SystemProviderRegistrar } from './providers';
 export * from './tokens';

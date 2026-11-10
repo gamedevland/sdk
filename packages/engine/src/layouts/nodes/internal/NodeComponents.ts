@@ -6,7 +6,7 @@
  */
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
-import type { BaseComponent } from '../../components';
+import type { BaseComponent } from '../../components/BaseComponent';
 
 type RuntimeClass<T> = abstract new (...args: never[]) => T;
 
@@ -108,23 +108,17 @@ export class NodeComponents {
 
   /** Disable all enabled components and detach all. */
   async destroy(): Promise<void> {
+    const errors: unknown[] = [];
     for (const id of this.enabled) {
-      const c = this.components.get(id);
-      if (c) c.disable();
+      try { this.components.get(id)?.disable(); } catch (error) { errors.push(error); }
     }
     this.enabled.clear();
-    for (const c of this.components.values()) {
-      try {
-        await c.onDetach();
-      } catch {
-        // swallow to keep teardown safe
-      }
-      try {
-        await c.completeDetach();
-      } catch {
-        // swallow to keep teardown safe
-      }
+    this.initialEnabled.clear();
+    for (const component of this.components.values()) {
+      try { await component.onDetach(); } catch (error) { errors.push(error); }
+      try { await component.completeDetach(); } catch (error) { errors.push(error); }
     }
     this.components.clear();
+    if (errors.length) throw new AggregateError(errors, 'Component cleanup failed');
   }
 }

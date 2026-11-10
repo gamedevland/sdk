@@ -1,4 +1,5 @@
-import { Application } from 'pixi.js';
+import { RenderTokens } from '../rendering/RenderTokens';
+import type { RenderRuntime } from '../rendering/types';
 
 import { ConfigStore, LocalesService } from '@engine/configs';
 import { DiContainer } from '@engine/di/DiContainer';
@@ -12,8 +13,6 @@ import { EventBus } from '../events/EventBus';
 import { BrowserInputGuard } from '../input/BrowserInputGuard';
 import { InputChannel } from '../input/InputChannel';
 import { InputManager } from '../input/InputManager';
-import { ParticlesFactory } from '../particles';
-import { PhysicsManager } from '../physics';
 import { PlatformManager } from '../platforms';
 import { PrefabManager, PrefabRepository } from '../prefabs';
 import { RuntimeServicesComposer } from '../runtime/RuntimeServicesComposer';
@@ -21,9 +20,7 @@ import SceneManager from '../scenes/SceneManager';
 import { ScreenManager } from '../screen/ScreenManager';
 import { GsapTweenManager } from '../tween/GsapTweenManager';
 
-import { EngineRenderPipeline } from './EngineRenderPipeline';
 
-import type { ParticlesManager } from '../particles';
 import type { EngineOptions } from './EngineOptions';
 import type { EngineCompositionRuntime } from './ports';
 import type { RuntimePhysicsStepPort } from '../runtime/RuntimePhysicsStepService';
@@ -31,15 +28,12 @@ import type { RuntimeScheduler } from '../runtime/RuntimeScheduler';
 import type { Scene } from '../scenes/SceneManager';
 
 interface StaticSubsystems {
-  readonly app: Application;
+  readonly rendering: RenderRuntime;
   readonly assets: AssetManager;
   readonly audio: AudioManager;
   readonly events: EventBus;
-  readonly renderPipeline: EngineRenderPipeline;
   readonly screen: ScreenManager;
   readonly tweens: GsapTweenManager;
-  readonly particles: ParticlesManager;
-  readonly physics: PhysicsManager;
   readonly platform: PlatformManager;
   readonly diContainer: DiContainer;
   readonly di: EngineDi;
@@ -61,7 +55,6 @@ interface RuntimeBoundSubsystems {
 
 export class EngineSubsystemFactory {
   createStatic(options: EngineOptions): StaticSubsystems {
-    const app = new Application();
     const screenConfig = options.screen ?? {
       land: { width: 1280, height: 720 },
       port: { width: 720, height: 1280 },
@@ -76,19 +69,19 @@ export class EngineSubsystemFactory {
     const runtimeServicesComposer = new RuntimeServicesComposer();
     const runtimeScheduler = runtimeServicesComposer.createScheduler();
     const diContainer = new DiContainer();
+    if (!options.renderer) throw new Error('Engine requires an explicit renderer module');
+    options.renderer.register(diContainer, assets, screenConfig);
+    const rendering = diContainer.get(RenderTokens.Runtime);
     const audio = AudioManager.createDefault(assets, options.audio);
     const platform = PlatformManager.createFromEnvironment();
 
     return {
-      app,
+      rendering,
       assets,
       audio,
       events,
-      renderPipeline: new EngineRenderPipeline(app, screenConfig),
-      screen: new ScreenManager(app, screenConfig),
+      screen: new ScreenManager(rendering, screenConfig),
       tweens: new GsapTweenManager(),
-      particles: ParticlesFactory.createDefault(assets),
-      physics: new PhysicsManager(),
       platform,
       diContainer,
       di: new EngineDi(diContainer),

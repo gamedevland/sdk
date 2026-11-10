@@ -7,7 +7,7 @@
  */
 import type { BaseComponent } from './BaseComponent';
 import type { ComponentRegistry } from './ComponentRegistry';
-import type { NodeBase } from '@engine/layouts/nodes/NodeBase';
+import type { NodeBase } from '@engine/layouts/NodeBase';
 import type { ComponentConfig, ElementConfig } from '@engine/layouts/types';
 
 type ComponentOwner = NodeBase & {
@@ -25,10 +25,10 @@ export class ComponentsAttacher {
     for (const [compId, compCfg] of Object.entries(cfg.components)) {
       const typedCfg = compCfg as ComponentConfig;
       const factory = this.componentsMap.get(typedCfg.type);
-      if (!factory) continue;
+      if (!factory) throw new Error('Unregistered behavior: ' + typedCfg.type);
       const instance = factory();
-      instance.init(owner, typedCfg.data);
       owner.addComponent(compId, instance, typedCfg.enabled !== false);
+      instance.init(owner, typedCfg.data);
     }
   }
 }

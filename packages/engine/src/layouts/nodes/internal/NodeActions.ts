@@ -5,7 +5,7 @@
  */
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
-import type { BaseAction } from '../../actions';
+import type { BaseAction } from '../../actions/BaseAction';
 
 type RuntimeClass<T> = abstract new (...args: never[]) => T;
 
@@ -75,18 +75,12 @@ export class NodeActions {
    * Dispose all actions by calling their optional onDetach hook and clear storage.
    */
   async destroy(): Promise<void> {
-    for (const a of this.actions.values()) {
-      try {
-        await a.onDetach();
-      } catch {
-        // swallow to keep teardown safe
-      }
-      try {
-        await a.completeDetach();
-      } catch {
-        // swallow to keep teardown safe
-      }
+    const errors: unknown[] = [];
+    for (const action of this.actions.values()) {
+      try { await action.onDetach(); } catch (error) { errors.push(error); }
+      try { await action.completeDetach(); } catch (error) { errors.push(error); }
     }
     this.actions.clear();
+    if (errors.length) throw new AggregateError(errors, 'Action cleanup failed');
   }
 }

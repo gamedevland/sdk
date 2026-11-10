@@ -1,4 +1,3 @@
-import type * as PIXI from 'pixi.js';
 /**
  * Options that control how a tween behaves over time.
  * All properties map to common GSAP options but are kept generic
@@ -105,7 +104,11 @@ export interface TimelineBuilder {
  * A flexible target accepted by the Tween system: either a raw Pixi DisplayObject
  * or an engine layout node exposing `view: PIXI.DisplayObject`.
  */
-export type TweenTarget = PIXI.ContainerChild | { view: PIXI.ContainerChild };
+export interface TweenObject {
+  x?: number; y?: number; rotation?: number; angle?: number; alpha?: number;
+  scale?: object;
+}
+export type TweenTarget = object;
 
 /**
  * High-level service that creates and manages tweens and timelines.

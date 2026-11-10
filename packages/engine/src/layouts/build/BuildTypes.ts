@@ -4,12 +4,12 @@ import type { ActionRegistry } from '../actions/ActionRegistry';
 import type { BaseAction } from '../actions/BaseAction';
 import type { BaseComponent } from '../components/BaseComponent';
 import type { ComponentRegistry } from '../components/ComponentRegistry';
-import type { DisplayNode } from '../nodes/types';
+
 import type { ElementConfig } from '../types';
 import type { LayoutRuntime } from '@engine/core';
 import type { DiContainerInterface } from '@engine/di/types';
 import type { ScreenManager } from '@engine/screen';
-import type * as PIXI from 'pixi.js';
+import type { NodeBase } from '../NodeBase';
 
 export interface BuildOptions {
   container?: DiContainerInterface;
@@ -31,21 +31,21 @@ export interface BuildContext {
 
 export interface BuiltElement {
   id: string;
-  object: DisplayNode;
+  object: NodeBase;
   children: Map<string, BuiltElement>;
   cfg: ElementConfig;
   parentId?: string;
 }
 
 export interface BuildResult {
-  root: PIXI.Container;
+  root: NodeBase;
   elements: Map<string, BuiltElement>;
 }
 
 // Element factory types (moved from registry). A factory is provided by DI.
 export interface CreatedElement {
   id: string;
-  object: DisplayNode;
+  object: NodeBase;
 }
 
 export interface ElementFactoryContext {

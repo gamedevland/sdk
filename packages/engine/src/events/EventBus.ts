@@ -7,12 +7,28 @@ import type { AppEvent, EventBusEmitInput, EventHandler, IEventBus } from './typ
  *
  * Key properties:
  * - Handlers are stored per `type` and in a catch‑all set for `onAny`.
- * - Emitting is fail‑safe: exceptions in handlers are swallowed so emitters are not impacted.
+ * - Emitting is fail‑safe: exceptions and rejections in handlers are reported so emitters are not impacted.
  * - Subscriptions return an unsubscribe function for easy cleanup.
  */
 export class EventBus implements IEventBus {
   private handlers: Map<string, Set<EventHandler>> = new Map();
   private anyHandlers: Set<EventHandler> = new Set();
+
+  constructor(private readonly onError: (error: unknown, event: AppEvent) => void =
+    (error, event) => console.error('Event handler failed: ' + event.type, error)) {}
+
+  private invoke(handler: EventHandler, event: AppEvent): void {
+    try {
+      const result = handler(event);
+      if (result) void Promise.resolve(result).catch(error => this.reportError(error, event));
+    } catch (error) {
+      this.reportError(error, event);
+    }
+  }
+
+  private reportError(error: unknown, event: AppEvent): void {
+    try { this.onError(error, event); } catch { /* Error observers cannot break event delivery. */ }
+  }
 
   /**
    * Emit an event to all listeners subscribed to its `type` and to any `onAny` listeners.
@@ -31,22 +47,9 @@ export class EventBus implements IEventBus {
       ...('data' in e ? { payload: e.data } : {}),
       ...(e.meta !== undefined ? { meta: e.meta } : {}),
     };
-    // on(type)
     const set = this.handlers.get(evt.type);
-    if (set)
-      for (const h of [...set])
-        try {
-          void h(evt);
-        } catch {
-          void 0;
-        }
-    // onAny
-    for (const h of [...this.anyHandlers])
-      try {
-        void h(evt);
-      } catch {
-        void 0;
-      }
+    if (set) for (const handler of [...set]) this.invoke(handler, evt);
+    for (const handler of [...this.anyHandlers]) this.invoke(handler, evt);
   }
 
   /**

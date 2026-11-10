@@ -1,6 +1,7 @@
+import { PixiServices } from '@engine/renderers/pixi/PixiServices';
+import { NodeBase as PixiNode } from '@engine/layouts/nodes/NodeBase';
 import { DisplacementFilter, Filter, Sprite as PixiSprite } from 'pixi.js';
 
-import { SystemServices } from '@engine/di';
 import { SchemaDecoder } from '@engine/validation';
 
 import { BaseTypedComponent } from './BaseTypedComponent';
@@ -27,6 +28,7 @@ export class DisplacementFilterComponent extends BaseTypedComponent<
   DisplacementFilterComponentConfig,
   NodeBase
 > {
+  protected readonly nodeType = PixiNode;
   protected override readonly configDecoder: Decoder<DisplacementFilterComponentConfig> =
     ConfigDecoder;
 
@@ -80,7 +82,7 @@ export class DisplacementFilterComponent extends BaseTypedComponent<
 
   private resolveNoiseTexture(): Texture {
     return this.node.engine.di
-      .get<TextureAssetResolver>(SystemServices.TextureAssetResolver)
+      .get<TextureAssetResolver>(PixiServices.TextureAssetResolver)
       .getRequiredTexture(this.config.noiseAssetId);
   }
 

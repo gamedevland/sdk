@@ -1,3 +1,5 @@
+import { ValidatorRegistry } from '@engine/validation';
+import { DisplayValidator } from '../validation/validators/DisplayValidator';
 // DimensionParser больше не создаётся здесь; parse приходит из DisplayManager
 
 import { TextStylesConfigDecoder } from '../../configs/common/TextStylesConfigDecoder';
@@ -12,7 +14,7 @@ import type { NodeProperty } from './NodeProperty';
 import type { LocalesService } from '../../configs';
 import type { BuildContext } from '../build/BuildTypes';
 import type { DisplayPipeline } from '../display/DisplayPipeline';
-import type { ElementConfig } from '../types';
+import type { ElementConfig } from '@engine/renderers/pixi/types';
 
 /**
  * Applies node-level properties (asset/text/textStyle)
@@ -38,6 +40,8 @@ export class NodePropertyApplier {
    * 2) Apply the effective display props through DisplayPipeline (position/scale/etc.)
    */
   apply(obj: unknown, cfg: ElementConfig): void {
+    const validated = new DisplayValidator().validate(cfg.props ?? {}, {path: 'props', registry: new ValidatorRegistry()});
+    if (!validated.ok) throw new Error(validated.issues.map(issue => issue.path + ': ' + issue.message).join('; '));
     const view = this.extractView(obj);
     for (const p of this.props)
       p.apply(view, cfg, {

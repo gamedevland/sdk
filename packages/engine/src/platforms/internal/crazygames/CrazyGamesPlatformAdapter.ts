@@ -245,7 +245,7 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
     }
     return new Promise<boolean>((resolve) => {
       let settled = false;
-      let timer: ReturnType<typeof setTimeout> | undefined;
+
       const finish = (success: boolean): void => {
         if (settled) {
           return;
@@ -258,7 +258,7 @@ export class CrazyGamesPlatformAdapter implements PlatformAdapter {
         resolve(success && !this.disposed);
       };
       this.pendingAd = finish;
-      timer = setTimeout(() => finish(false), CrazyGamesPlatformAdapter.AD_REQUEST_TIMEOUT_MS);
+      const timer = setTimeout(() => finish(false), CrazyGamesPlatformAdapter.AD_REQUEST_TIMEOUT_MS);
       try {
         sdk.ad.requestAd(type, {
           adStarted: () => {

@@ -9,11 +9,12 @@
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 import { SchemaDecoder } from '@engine/validation';
 
-import type { NodeBase } from '../nodes/NodeBase';
+import type { NodeBase } from '@engine/layouts/NodeBase';
 import type { TweenHandle } from '@engine/tween/types';
 import type { Decoder } from '@engine/validation';
 
-export abstract class BaseAction {
+export abstract class BaseAction<TNode extends NodeBase = NodeBase> {
+  protected abstract readonly nodeType: abstract new (...args: never[]) => TNode;
   private _node: NodeBase | undefined;
   private _config: Readonly<Record<string, unknown>> = Object.freeze({});
   private readonly activeTasks = new Set<Promise<void>>();
@@ -22,7 +23,7 @@ export abstract class BaseAction {
   private detaching = false;
 
   /** Accessor that guarantees an attached node. */
-  protected get node(): NodeBase {
+  protected get node(): TNode {
     if (!this._node) {
       throw EngineErrorFactory.invariant({
         code: EngineErrorCode.LayoutInvariantViolation,
@@ -31,7 +32,7 @@ export abstract class BaseAction {
         details: { className: this.constructor.name, method: 'BaseAction.node' },
       });
     }
-    return this._node;
+    return this._node.requireNode(this.nodeType);
   }
 
   /** Read-only normalized raw action config. */
@@ -76,6 +77,7 @@ export abstract class BaseAction {
    */
   init(node: NodeBase, data?: Record<string, unknown>): void {
     this.detaching = false;
+    node.requireNode(this.nodeType);
     this._node = node;
     this._config = Object.freeze({ ...(data ?? {}) });
     this.onBaseInit();

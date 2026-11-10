@@ -2,7 +2,6 @@ import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/er
 import { SchemaDecoder } from '@engine/validation';
 
 import type { Decoder } from '@engine/validation';
-import type { EmitterConfigV3 } from '@spd789562/particle-emitter';
 
 interface RandNumberInput {
   readonly min: number;
@@ -98,10 +97,10 @@ export class ParticlePresetReader {
     autoUpdate: SchemaDecoder.optional(SchemaDecoder.boolean()),
   });
 
-  static read(input: Record<string, unknown>, source: string): EmitterConfigV3 {
+  static read(input: Record<string, unknown>, source: string) {
     const preset = SchemaDecoder.decode(input, ParticlePresetReader.PRESET, source);
 
-    const config: EmitterConfigV3 = {
+    const config = {
       lifetime: preset.lifetime,
       frequency: preset.frequency,
       pos: preset.pos,

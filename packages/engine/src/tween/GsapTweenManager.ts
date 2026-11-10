@@ -14,7 +14,6 @@ import type {
   TweenPoint,
   TweenTarget,
 } from './types';
-import type * as PIXI from 'pixi.js';
 
 interface DestroyableTweenTarget {
   readonly destroyed: boolean;
@@ -402,7 +401,7 @@ export class GsapTweenManager implements TweenManager {
   /** Convenience: tween by delta (dx, dy) relative to current position. */
   moveBy(target: TweenTarget, dx: number, dy: number, opts?: TweenOptions) {
     const t = this.unwrap(target);
-    return this.to(t, { x: (t.x ?? 0) + dx, y: (t.y ?? 0) + dy }, opts);
+    return this.to(t, { x: ('x' in t && typeof t.x === 'number' ? t.x : 0) + dx, y: ('y' in t && typeof t.y === 'number' ? t.y : 0) + dy }, opts);
   }
   /** Convenience: uniform or non-uniform scale. Number applies to both axes. */
   scaleTo(
@@ -414,26 +413,26 @@ export class GsapTweenManager implements TweenManager {
     const t = this.unwrap(target);
     const sx = typeof s === 'number' ? s : s.x;
     const sy = typeof s === 'number' ? s : s.y;
-    const tw = gsap.to(t.scale, { x: sx, y: sy, ...this.mapOpts({ duration, ...(opts ?? {}) }) });
+    const tw = gsap.to(this.scaleTarget(t), { x: sx, y: sy, ...this.mapOpts({ duration, ...(opts ?? {}) }) });
     const handle = new GsapTweenHandle(tw);
     this.track(tw, t, opts?.groupId);
     this.handlesByAnimation.set(tw, handle);
     this.rememberDiagnostics(
       tw,
-      this.createTweenDiagnostics('scaleTo', target, t.scale, { x: sx, y: sy }, opts?.groupId),
+      this.createTweenDiagnostics('scaleTo', target, this.scaleTarget(t), { x: sx, y: sy }, opts?.groupId),
     );
     return handle;
   }
   /** Convenience: non-uniform scale with separate X and Y. */
   scaleXY(target: TweenTarget, sx: number, sy: number, opts?: TweenOptions) {
     const t = this.unwrap(target);
-    const tw = gsap.to(t.scale, { x: sx, y: sy, ...this.mapOpts(opts) });
+    const tw = gsap.to(this.scaleTarget(t), { x: sx, y: sy, ...this.mapOpts(opts) });
     const handle = new GsapTweenHandle(tw);
     this.track(tw, t, opts?.groupId);
     this.handlesByAnimation.set(tw, handle);
     this.rememberDiagnostics(
       tw,
-      this.createTweenDiagnostics('scaleXY', target, t.scale, { x: sx, y: sy }, opts?.groupId),
+      this.createTweenDiagnostics('scaleXY', target, this.scaleTarget(t), { x: sx, y: sy }, opts?.groupId),
     );
     return handle;
   }
@@ -465,7 +464,7 @@ export class GsapTweenManager implements TweenManager {
   /** Rotate by a delta angle (radians). */
   rotateBy(target: TweenTarget, dr: number, opts?: TweenOptions) {
     const t = this.unwrap(target);
-    return this.to(t, { rotation: (t.rotation ?? 0) + dr }, opts);
+    return this.to(t, { rotation: ('rotation' in t && typeof t.rotation === 'number' ? t.rotation : 0) + dr }, opts);
   }
 
   /** Animate Pixi's angle (degrees) to an absolute value with explicit duration. */
@@ -626,14 +625,19 @@ export class GsapTweenManager implements TweenManager {
    * If a higher-level Node wrapper is passed in (with `view` field),
    * return its underlying render object; otherwise return as-is.
    */
-  private unwrap(target: TweenTarget): PIXI.ContainerChild {
+  private scaleTarget(target: object): object {
+    if (!('scale' in target) || typeof target.scale !== 'object' || target.scale === null) throw new Error('Tween target has no scale');
+    return target.scale;
+  }
+  private isViewWrapper(target: TweenTarget): target is { view: object } {
+    return 'view' in target && typeof target.view === 'object' && target.view !== null;
+  }
+
+  private unwrap(target: TweenTarget): object {
     if (this.isViewWrapper(target)) return target.view;
     return target;
   }
 
-  private isViewWrapper(target: TweenTarget): target is { view: PIXI.ContainerChild } {
-    return typeof target === 'object' && target !== null && 'view' in target;
-  }
 
   private tryGetGroupId(targetOrGroup: TweenTarget | { groupId?: string }): string | undefined {
     if (typeof targetOrGroup !== 'object' || targetOrGroup === null) return undefined;
@@ -669,6 +673,15 @@ export class GsapTweenManager implements TweenManager {
     // Exclude engine-only options (e.g., groupId) from GSAP to avoid "Invalid property" warnings
     const { groupId: _groupId, ...rest } = opts ?? {};
     return { duration: this.defaults.duration, ease: this.defaults.ease, ...rest };
+  }
+
+  private disposed = false;
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.killAll();
+    GsapTweenManager.manualClockOwners -= 1;
+    if (GsapTweenManager.manualClockOwners === 0) gsap.ticker.add(GsapTweenManager.GsapRootUpdater);
   }
 
   private attachManualClockControl(): void {

@@ -1,6 +1,6 @@
 {
   "name": "@gamedevland/engine",
-  "version": "0.0.12",
+  "version": "0.0.13-hybrid.2",
   "type": "module",
   "description": "HTML5 game engine SDK for AI-assisted web game development.",
   "license": "MIT",
@@ -16,102 +16,118 @@
   ],
   "main": "./dist/sdk.js",
   "module": "./dist/sdk.js",
-  "types": "./dist/sdk.d.ts",
+  "types": "./dist/types/index.d.ts",
   "sideEffects": false,
   "files": [
-    "dist/sdk.js",
-    "dist/sdk.d.ts",
+    "dist",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "MIGRATION_RENDERERS.md"
   ],
   "publishConfig": {
     "access": "public"
   },
   "exports": {
     ".": {
-      "types": "./dist/sdk.d.ts",
+      "types": "./dist/types/index.d.ts",
       "import": "./dist/sdk.js"
     },
     "./assets": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/assets/index.d.ts",
+      "import": "./dist/assets.js"
     },
     "./audio": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/audio/index.d.ts",
+      "import": "./dist/audio.js"
     },
     "./commands": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/commands/index.d.ts",
+      "import": "./dist/commands.js"
     },
     "./configs": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/configs/index.d.ts",
+      "import": "./dist/configs.js"
     },
     "./core": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/core/index.d.ts",
+      "import": "./dist/core.js"
     },
     "./di": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/di/index.d.ts",
+      "import": "./dist/di.js"
     },
     "./errors": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/errors/index.d.ts",
+      "import": "./dist/errors.js"
     },
     "./events": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/events/index.d.ts",
+      "import": "./dist/events.js"
     },
     "./fsm": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/fsm/index.d.ts",
+      "import": "./dist/fsm.js"
     },
     "./input": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/input/index.d.ts",
+      "import": "./dist/input.js"
     },
     "./interactions": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/interactions/index.d.ts",
+      "import": "./dist/interactions.js"
     },
     "./layouts": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/layouts/index.d.ts",
+      "import": "./dist/layouts.js"
     },
     "./physics": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/physics/index.d.ts",
+      "import": "./dist/physics.js"
     },
     "./particles": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/particles/index.d.ts",
+      "import": "./dist/particles.js"
     },
     "./platforms": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/platforms/index.d.ts",
+      "import": "./dist/platforms.js"
     },
     "./prefabs": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/prefabs/index.d.ts",
+      "import": "./dist/prefabs.js"
     },
     "./scenes": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/scenes/index.d.ts",
+      "import": "./dist/scenes.js"
     },
     "./screen": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/screen/index.d.ts",
+      "import": "./dist/screen.js"
     },
     "./tween": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/tween/index.d.ts",
+      "import": "./dist/tween.js"
     },
     "./validation": {
-      "types": "./dist/sdk.d.ts",
-      "import": "./dist/sdk.js"
+      "types": "./dist/types/validation/index.d.ts",
+      "import": "./dist/validation.js"
+    },
+    "./rendering": {
+      "types": "./dist/types/rendering/index.d.ts",
+      "import": "./dist/rendering.js"
+    },
+    "./renderers/pixi": {
+      "types": "./dist/types/renderers/pixi/index.d.ts",
+      "import": "./dist/renderers/pixi.js"
+    },
+    "./renderers/three": {
+      "types": "./dist/types/renderers/three/index.d.ts",
+      "import": "./dist/renderers/three.js"
+    },
+    "./renderers/hybrid": {
+      "types": "./dist/types/renderers/hybrid/index.d.ts",
+      "import": "./dist/renderers/hybrid.js"
     }
   },
   "scripts": {
@@ -119,14 +135,12 @@
     "test:resource-cleanup": "node scripts/verify-resource-cleanup.mjs",
     "clean": "rimraf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit",
-    "build": "npm run clean && tsc --noEmit && node scripts/build-package.mjs && dts-bundle-generator --no-check --project tsconfig.json --out-file dist/sdk.d.ts src/index.ts && node scripts/fix-sdk-dts.mjs"
+    "build": "npm run clean && tsc --noEmit && node scripts/build-package.mjs && tsc -p tsconfig.types.json && tsc-alias -p tsconfig.types.json",
+    "test": "tsx --tsconfig tsconfig.json --test tests/*.test.ts"
   },
   "dependencies": {
-    "@spd789562/particle-emitter": "^1.0.2",
     "gsap": "^3.12.5",
-    "howler": "^2.2.4",
-    "matter-js": "^0.20.0",
-    "pixi.js": "^8.16.0"
+    "howler": "^2.2.4"
   },
   "repository": {
     "type": "git",
@@ -136,5 +150,34 @@
   "homepage": "https://github.com/gamedevland/sdk/tree/main/packages/engine#readme",
   "bugs": {
     "url": "https://github.com/gamedevland/sdk/issues"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "three": "^0.187.0",
+    "pixi.js": "^8.16.0",
+    "matter-js": "^0.20.0",
+    "@spd789562/particle-emitter": "^1.0.2",
+    "@types/howler": "^2.2.12",
+    "@types/matter-js": "^0.20.2",
+    "esbuild": "^0.28.1",
+    "rimraf": "^6.0.1",
+    "tsc-alias": "^1.8.16"
+  },
+  "private": true,
+  "peerDependencies": {
+    "pixi.js": "^8.16.0",
+    "three": "^0.187.0",
+    "@types/three": "^0.187.0"
+  },
+  "peerDependenciesMeta": {
+    "pixi.js": {
+      "optional": true
+    },
+    "three": {
+      "optional": true
+    },
+    "@types/three": {
+      "optional": true
+    }
   }
 }

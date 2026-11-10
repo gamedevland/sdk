@@ -1,86 +1,36 @@
-// Creates a single element: resolves element factory, applies properties, attaches behavior
-// and then assembles its children. Acts as the central orchestrator for node creation.
-import { DiTokens } from '@engine/di/tokens';
-import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
-import { ActionsAttacher } from '@engine/layouts/actions/ActionsAttacher';
-import { ChildrenAssembler } from '@engine/layouts/build/ChildrenAssembler';
-import { NodeBuildLifecycle } from '@engine/layouts/build/NodeBuildLifecycle';
-import { ComponentsAttacher } from '@engine/layouts/components/ComponentsAttacher';
-import { NodePropertyApplier } from '@engine/layouts/properties/NodePropertyApplier';
+import { DiTokens } from '../../di/tokens';
+import { ComponentsAttacher } from '../components/ComponentsAttacher';
+import { ActionsAttacher } from '../actions/ActionsAttacher';
+import type { ElementFactory } from '../../di/ElementFactoriesGroup';
+import type { BuildContext, BuiltElement } from './BuildTypes';
+import type { BuiltElementsRegistry } from './BuiltElementsRegistry';
+import type { LayoutProperties } from '../../rendering/types';
+import type { ElementConfig } from '../types';
 
-import { DefaultMetaLayer, type NodeMetaHooks } from './MetaLayer';
-
-import type { CreatedElement } from '@engine/layouts/build/BuildTypes';
-import type { BuildContext, BuiltElement } from '@engine/layouts/build/BuildTypes';
-import type { ElementFactoryContext } from '@engine/layouts/build/BuildTypes';
-import type { BuiltElementsRegistry } from '@engine/layouts/build/BuiltElementsRegistry';
-import type { DisplayPipeline } from '@engine/layouts/display/DisplayPipeline';
-import type { ElementConfig } from '@engine/layouts/types';
-
-type ElementFactory = (
-  id: string,
-  cfg: ElementConfig,
-  ctx: ElementFactoryContext,
-) => CreatedElement;
-
+/** Shared orchestration for both renderers and prefabs. */
 export class ElementCreator {
-  constructor(
-    private readonly ctx: BuildContext,
-    private readonly registry: BuiltElementsRegistry,
-    private readonly pipeline: DisplayPipeline,
-    private readonly meta: NodeMetaHooks = new DefaultMetaLayer(),
-    private readonly lifecycle = new NodeBuildLifecycle(),
-  ) {}
-
-  create(id: string, cfg: ElementConfig, parent?: BuiltElement): BuiltElement | null {
-    // Resolve element factory by its declarative type via DI
+  constructor(private readonly ctx: BuildContext, private readonly registry: BuiltElementsRegistry,
+    private readonly properties: LayoutProperties) {}
+  create(id: string, cfg: ElementConfig, parent?: BuiltElement): BuiltElement {
     const factory = this.ctx.container.get(DiTokens.element<ElementFactory>(cfg.type));
-    if (!factory) return null;
-
-    // provisional built to provide correct parent for factory-created children
-    const built = this.registry.createProvisional(id, cfg, parent?.id);
-
-    // phase 1: create native/domain object via factory
-    const created: CreatedElement = factory(id, cfg, {
-      createChild: (childId: string, childCfg: ElementConfig) => {
-        const child = this.create(childId, childCfg, built);
-        if (!child) {
-          throw EngineErrorFactory.invariant({
-            code: EngineErrorCode.LayoutInvariantViolation,
-            subsystem: EngineSubsystem.Layout,
-            message: 'Failed to create child node',
-            details: { parentId: id, childId, method: 'ElementCreator.create' },
-          });
-        }
-        return { id: child.id, object: child.object };
-      },
+    const created = factory(id, cfg, {
       assets: this.ctx.assets,
+      createChild: (childId, childCfg) => this.create(childId, childCfg),
     });
-
-    // phase 2: set created object and inject engine early (before components/actions)
-    built.object = created.object;
-    this.lifecycle.bindEngine(built.object, this.ctx.engine);
-
-    // phase 3: apply display properties (position, size, styles, etc.)
-    new NodePropertyApplier(this.ctx, this.pipeline).apply(built.object, cfg);
-
-    // styles system removed — nothing to attach here
-
-    // metadata hooks
-    this.meta.onCreated(built.object, {
-      id,
-      ...(this.ctx.engine ? { engine: this.ctx.engine } : {}),
-    });
-
-    // phase 4b: attach components/actions declared in config (engine is already set)
-    if (this.ctx.components)
-      new ComponentsAttacher(this.ctx.components).attach(created.object as never, cfg);
-    if (this.ctx.actions)
-      new ActionsAttacher(this.ctx.actions).attach(created.object as never, cfg);
-
-    // phase 5: assemble and attach children recursively
-    new ChildrenAssembler(this).assemble(id, cfg, built);
-
+    const built = this.registry.add(id, cfg, created.object, parent?.id);
+    built.object.id = id;
+    built.object.engine = this.ctx.engine;
+    this.properties.apply(built.object, cfg);
+    // Register ownership before init so partial init failures are rolled back.
+    new ComponentsAttacher(this.ctx.components).attach(built.object, cfg);
+    new ActionsAttacher(this.ctx.actions).attach(built.object, cfg);
+    if (cfg.children && !built.object.acceptsChildren) throw new Error(id + ': children require a container node');
+    for (const [key, config] of Object.entries(cfg.children ?? {})) {
+      const child = this.create(id + '.' + key, config, built);
+      built.children.set(key, child);
+      built.object.addChild(key, child.object);
+      built.object.attach(child.object);
+    }
     return built;
   }
 }

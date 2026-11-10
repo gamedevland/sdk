@@ -1,0 +1,53 @@
+{
+  "root": {
+    "type": "Container",
+    "children": {
+      "label": {
+        "type": "Text",
+        "props": {
+          "x": 24,
+          "y": 24,
+          "text": "PixiJS \u00b7 SDK Lab\nClick the tile",
+          "style": {
+            "fontFamily": "Arial",
+            "fontSize": 30,
+            "fill": "#e7f5ef"
+          },
+          "anchor": {
+            "x": 0,
+            "y": 0
+          }
+        }
+      },
+      "tile": {
+        "type": "Graphics",
+        "props": {
+          "x": "50%",
+          "y": "50%",
+          "width": 180,
+          "height": 180,
+          "pivot": {
+            "x": 90,
+            "y": 90
+          },
+          "color": "#42c8ae",
+          "radius": 20
+        },
+        "components": {
+          "tap": {
+            "type": "Tap"
+          }
+        },
+        "actions": {
+          "pulse": {
+            "type": "Pulse",
+            "data": {
+              "scale": 1.4,
+              "durationMs": 600
+            }
+          }
+        }
+      }
+    }
+  }
+}

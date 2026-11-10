@@ -1,6 +1,6 @@
+import type { ElementConfig } from '@engine/layouts/types';
 import type { NodeBase } from '@engine/layouts';
-import type { Container } from '@engine/layouts';
-import type { DisplayConfig, ElementConfig } from '@engine/layouts/types';
+
 
 export interface PrefabDefinition {
   element: ElementConfig;
@@ -8,9 +8,9 @@ export interface PrefabDefinition {
 
 export interface PrefabSpawnParams {
   prefabId: string;
-  parent: Container;
+  parent: NodeBase;
   localId: string;
-  overrides?: Partial<DisplayConfig>;
+  overrides?: object;
 }
 
 export interface SpawnedPrefab<TNode extends NodeBase = NodeBase> {

@@ -44,12 +44,14 @@ export class EngineEventBridge {
     this.disposeScreenChangeSubscription = undefined;
   }
 
-  private forwardEventToActiveSceneFSM(event: AppEvent): void {
+  private async forwardEventToActiveSceneFSM(event: AppEvent): Promise<void> {
     const fsm = this.options.resolveActiveSceneFSM();
     if (!fsm) {
       return;
     }
-    void fsm.dispatch(event).catch((error: unknown) => {
+    try {
+      await fsm.dispatch(event);
+    } catch (error) {
       throw EngineErrorFactory.invariant({
         code: EngineErrorCode.CoreInvariantViolation,
         subsystem: EngineSubsystem.Core,
@@ -60,7 +62,7 @@ export class EngineEventBridge {
         },
         cause: error,
       });
-    });
+    }
   }
 
   private readInitialScreenSnapshot(): ScreenStateSnapshot {

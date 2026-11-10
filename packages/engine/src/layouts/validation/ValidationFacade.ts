@@ -4,7 +4,7 @@
 import { ValidatorRegistry } from './core/Validator';
 import { ActionValidator } from './validators/ActionValidator';
 import { ComponentValidator } from './validators/ComponentValidator';
-import { DisplayValidator } from './validators/DisplayValidator';
+import { StructuralPropsValidator } from './validators/StructuralPropsValidator';
 import { ElementValidator } from './validators/ElementValidator';
 import { LayoutValidator as LayoutCompositeValidator } from './validators/LayoutFileValidator';
 
@@ -15,7 +15,7 @@ export class ValidationFacade {
   /** Validate any JSON into a typed LayoutFile or return issues. */
   validate(json: unknown): ValidationResult<LayoutFile> {
     const reg = new ValidatorRegistry();
-    reg.register('display', new DisplayValidator());
+    reg.register('display', new StructuralPropsValidator());
     reg.register('component', new ComponentValidator());
     reg.register('action', new ActionValidator());
     reg.register('element', new ElementValidator(reg));

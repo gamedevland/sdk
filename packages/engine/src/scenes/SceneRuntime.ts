@@ -1,3 +1,6 @@
+import type { NodeBase } from '@engine/layouts/NodeBase';
+import type { RenderRuntime } from '@engine/rendering/types';
+import type { FrameDriver } from '@engine/rendering/FrameDriver';
 import type { RuntimeActivity } from '../core/runtime/RuntimeActivity';
 import type { AssetManager } from '@engine/assets';
 import type { AudioManager } from '@engine/audio';
@@ -9,21 +12,20 @@ import type { SceneFSM } from '@engine/fsm/SceneFSM';
 import type { InputChannel } from '@engine/input/InputChannel';
 import type { InputManager } from '@engine/input/InputManager';
 import type { SceneLayout } from '@engine/layouts';
-import type { ParticlesManager } from '@engine/particles';
 import type { PlatformManager } from '@engine/platforms';
 import type { PrefabManager } from '@engine/prefabs';
 import type SceneManager from '@engine/scenes/SceneManager';
 import type { ScreenManager } from '@engine/screen';
 import type { GsapTweenManager } from '@engine/tween';
-import type { Application, Container } from 'pixi.js';
 
 /**
  * Public runtime contract exposed to scenes.
  * Scenes should depend on this contract instead of concrete Engine internals.
  */
 export interface SceneRuntime {
+  readonly rendering: RenderRuntime;
+  readonly frames: FrameDriver;
   readonly activity: RuntimeActivity;
-  readonly app: Application;
   readonly audio: AudioManager;
   readonly assets: AssetManager;
   readonly scenes: SceneManager;
@@ -34,11 +36,10 @@ export interface SceneRuntime {
   readonly input: InputManager;
   readonly inputChannel: InputChannel;
   readonly prefabs: PrefabManager;
-  readonly particles: ParticlesManager;
   readonly platform: PlatformManager;
   readonly di: EngineDi;
 
-  getSceneRenderRoot(): Container;
+  getSceneRenderRoot(): NodeBase;
   getActiveLayout(): SceneLayout | undefined;
   getRequiredActiveLayout(): SceneLayout;
   setActiveLayout(layout: SceneLayout | undefined): void;

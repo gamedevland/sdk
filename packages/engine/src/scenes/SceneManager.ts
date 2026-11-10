@@ -4,7 +4,7 @@ import type { SceneManagerRuntime } from '@engine/core';
 import type { DiContainerInterface } from '@engine/di/types';
 import type { SceneFSM } from '@engine/fsm/SceneFSM';
 import type { SceneLayout } from '@engine/layouts';
-import type { Ticker } from 'pixi.js';
+
 
 export type SceneTransitionOperation = 'replace' | 'push' | 'pop';
 export type SceneTransitionPhase =
@@ -24,6 +24,7 @@ export interface SceneContext {
 }
 
 export interface Scene {
+  resumeRendering?(): void;
   /**
    * Optional hook called before {@link onEnter}. Use it to preload assets or perform async setup.
    */
@@ -115,7 +116,8 @@ export class SceneManager {
   private runtimePaused = false;
   private lastTickTime = 0;
   /** Cached bound ticker callback so we can remove it deterministically. */
-  private tickerBound = (ticker: Ticker) => this.onTick(ticker.deltaTime);
+  private tickerBound = (dt: number) => this.onTick(dt);
+  private unsubscribeTick: (() => void) | undefined;
 
   constructor(engine: SceneManagerRuntime, options?: SceneManagerOptions) {
     this.engine = engine;
@@ -300,6 +302,7 @@ export class SceneManager {
       this.transitionState = 'exiting';
       await this.runExit(current.scene, current.ctx, 'replace');
       this.cleanupEngineSceneRefs(current.scene);
+      this.stack.pop();
       // No active scene between exit and enter — event routing is suspended.
       this.setCurrentScene(null);
     }
@@ -312,11 +315,7 @@ export class SceneManager {
     await this.runEnter(scene, nextCtx, 'replace');
 
     this.transitionState = 'committing';
-    if (current) {
-      this.stack[this.stack.length - 1] = { scene, ctx: nextCtx, paused: false };
-    } else {
-      this.stack.push({ scene, ctx: nextCtx, paused: false });
-    }
+    this.stack.push({ scene, ctx: nextCtx, paused: false });
     this.ensureTickerAttached();
   }
 
@@ -356,6 +355,7 @@ export class SceneManager {
     this.setCurrentScene(next?.scene ?? null);
     if (next) {
       next.paused = false;
+      this.restoreSceneBindings(next.scene);
     } else {
       this.detachTickerIfAttached();
       this.lastTickTime = 0;
@@ -399,7 +399,15 @@ export class SceneManager {
       this.captureSchedulerSceneBaseline(scene, operation);
     } catch (error) {
       // Entry failed — revert to whatever is on the stack (may be null).
-      this.setCurrentScene(this.top()?.scene ?? null);
+      const errors: unknown[] = [error];
+      try {
+        await this.runHookWithTimeout({scene, operation, phase: 'exiting', timeoutMs: this.transitionTimeoutMs, hook: () => scene.onExit(ctx)});
+      } catch (cleanup) { errors.push(cleanup); }
+      this.cleanupEngineSceneRefs(scene);
+      const previous = this.top()?.scene;
+      this.setCurrentScene(previous ?? null);
+      if (previous) this.restoreSceneBindings(previous);
+      if (errors.length > 1) throw new AggregateError(errors, 'Scene enter and rollback failed');
       throw error;
     }
     // On success currentScene stays as scene; commit will push it onto the stack.
@@ -596,6 +604,13 @@ export class SceneManager {
     return error instanceof EngineError && error.code === EngineErrorCode.SceneLifecycleFailure;
   }
 
+  private restoreSceneBindings(scene: Scene): void {
+    this.engine.setActiveLayout(scene.getLayout?.());
+    this.engine.setActiveSceneFSM(scene.getFSM?.());
+    this.engine.setActiveSceneDi(scene.getSceneDi?.());
+    scene.resumeRendering?.();
+  }
+
   private cleanupEngineSceneRefs(scene: Scene): void {
     this.engine.clearActiveLayout(scene.getLayout?.());
     this.engine.clearActiveSceneFSM(scene.getFSM?.());
@@ -653,13 +668,14 @@ export class SceneManager {
 
   private ensureTickerAttached(): void {
     if (this.tickerAttached) return;
-    this.engine.app.ticker.add(this.tickerBound);
+    this.unsubscribeTick = this.engine.frames.subscribe(this.tickerBound);
     this.tickerAttached = true;
   }
 
   private detachTickerIfAttached(): void {
     if (!this.tickerAttached) return;
-    this.engine.app.ticker.remove(this.tickerBound);
+    this.unsubscribeTick?.();
+    this.unsubscribeTick = undefined;
     this.tickerAttached = false;
   }
 
@@ -674,7 +690,7 @@ export class SceneManager {
       return;
     }
     const now = performance.now();
-    const dtMs = this.lastTickTime ? now - this.lastTickTime : (1000 / 60) * deltaFrames;
+    const dtMs = Math.min(deltaFrames * 1000, 100);
     this.lastTickTime = now;
     if (typeof top.scene.update === 'function') {
       top.scene.update(dtMs / 1000);
@@ -697,6 +713,15 @@ export class SceneManager {
     this.destroyed = true;
     await this.transitionQueue;
     this.detachTickerIfAttached();
+    const errors: unknown[] = [];
+    while (this.stack.length) {
+      const entry = this.stack.pop();
+      if (!entry) break;
+      try { await this.runExit(entry.scene, entry.ctx, 'pop'); } catch (error) { errors.push(error); }
+      this.cleanupEngineSceneRefs(entry.scene);
+    }
+    this.setCurrentScene(null);
+    if (errors.length) throw new AggregateError(errors, 'Scene disposal failed');
   }
 }
 

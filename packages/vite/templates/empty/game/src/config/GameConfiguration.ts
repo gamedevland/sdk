@@ -1,3 +1,4 @@
+import { PixiRendererModule } from '@gamedevland/engine/renderers/pixi';
 import { AssetManifestBuilder } from '@gamedevland/engine/assets';
 import type { GameConfig } from '@gamedevland/engine/core';
 import { MainSceneDefinition } from '../scenes/main/MainSceneDefinition';
@@ -6,6 +7,7 @@ import { ProjectDi } from './ProjectDi';
 export class GameConfiguration {
   static readonly config: GameConfig = {
     system: {
+      renderer: new PixiRendererModule(),
       canvasBackground: '#07111f',
       screen: {
         land: { width: 960, height: 540, fit: 'height' },

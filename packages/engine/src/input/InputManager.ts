@@ -1,6 +1,6 @@
 import { defaultInputConfig, type InputConfig } from './config';
 import { InputRouter } from './InputRouter';
-import { NodeHitTester } from './NodeHitTester';
+import type { HitTester } from '../rendering/types';
 import { PointerTracker } from './PointerTracker';
 import { DragRecognizer } from './recognizers/DragRecognizer';
 import { TapRecognizer } from './recognizers/TapRecognizer';
@@ -24,9 +24,10 @@ export class InputManager {
   private tracker: PointerTracker;
   private taps: TapRecognizer;
   private drags: DragRecognizer;
-  private hits: NodeHitTester;
+  private hits: HitTester;
   private router = new InputRouter();
   private attached = false;
+  private paused = false;
   private handlePointerDown!: (ev: PointerEvent) => void;
   private handlePointerMove!: (ev: PointerEvent) => void;
   private handlePointerUp!: (ev: PointerEvent) => void;
@@ -53,13 +54,22 @@ export class InputManager {
     });
     this.drags = new DragRecognizer({ dragStartDistance: this.cfg.dragStartDistance });
     const getActiveLayout = deps?.getActiveLayout ?? (() => this.engine.getActiveLayout());
-    this.hits = new NodeHitTester(getActiveLayout);
+    this.hits = this.engine.rendering.createHitTester(getActiveLayout);
     // Bind DOM listeners once to preserve stable references for add/removeEventListener
     this.handlePointerDown = this.onPointerDown.bind(this);
     this.handlePointerMove = this.onPointerMove.bind(this);
     this.handlePointerUp = this.onPointerUp.bind(this);
     this.handlePointerCancel = this.onPointerCancel.bind(this);
     this.handleWheel = this.onWheel.bind(this);
+  }
+
+  setPaused(paused: boolean): void {
+    this.paused = paused;
+    if (paused && this.canvas) {
+      const canvas = this.canvas;
+      this.detach(canvas);
+      this.attach(canvas);
+    }
   }
 
   /**
@@ -159,6 +169,7 @@ export class InputManager {
    * Native pointerdown handler: captures pointer state, performs hit-test and emits pointerdown.
    */
   private onPointerDown = (ev: PointerEvent): void => {
+    if (this.paused) return;
     this.trySetPointerCapture(ev);
     const time = performance.now();
     const st = this.tracker.down(
@@ -179,6 +190,7 @@ export class InputManager {
    * Drag recognition starts when movement exceeds `dragStartDistance`.
    */
   private onPointerMove = (ev: PointerEvent): void => {
+    if (this.paused) return;
     const time = performance.now();
     const throttle = this.cfg.throttleMoveMs;
     if (throttle > 0 && time - this.lastMoveTime < throttle) return;
@@ -216,6 +228,7 @@ export class InputManager {
    * Always emits a trailing pointerup event.
    */
   private onPointerUp = (ev: PointerEvent): void => {
+    if (this.paused) return;
     const time = performance.now();
     const st = this.tracker.up(ev.pointerId, time);
     if (!st) {
@@ -262,6 +275,7 @@ export class InputManager {
    * Native wheel handler: normalizes delta using configured scale and routes a wheel event.
    */
   private onWheel = (ev: WheelEvent): void => {
+    if (this.paused) return;
     const time = performance.now();
     const scale = this.cfg.wheelScale;
     const v = this.engine.screen.toVirtual(ev.clientX, ev.clientY);

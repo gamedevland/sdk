@@ -1,10 +1,11 @@
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
+import type { NodeBase } from '../NodeBase';
 import { BaseAction } from './BaseAction';
 
 import type { Decoder } from '@engine/validation';
 
-export abstract class BaseTypedAction<TConfig, TInput = Record<string, never>> extends BaseAction {
+export abstract class BaseTypedAction<TConfig, TInput = Record<string, never>, TNode extends NodeBase = NodeBase> extends BaseAction<TNode> {
   private _typedConfig: TConfig | undefined;
 
   protected abstract readonly configDecoder: Decoder<TConfig>;

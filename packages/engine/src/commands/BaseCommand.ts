@@ -87,7 +87,7 @@ export abstract class BaseCommand {
    * Any error (scope-related or collateral, e.g. missing assets during teardown)
    * is silently swallowed when the scene scope is no longer active — there is
    * nothing to report to since the scene is already gone.
-   * Errors that occur while the scope is still active are re-thrown (real bugs).
+   * Errors that occur while the scope is still active are reported to the console.
    */
   protected runDetached(operation: () => Promise<void>): void {
     void this.executeDetached(operation);
@@ -98,7 +98,7 @@ export abstract class BaseCommand {
       await operation();
     } catch (error: unknown) {
       if (this.isSceneScopeActive()) {
-        throw error;
+        console.error(`Detached command failed: ${this.getCommandName()}`, error);
       }
     }
   }

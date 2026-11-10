@@ -6,13 +6,14 @@
  */
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
-import type { NodeBase } from '../NodeBase';
+import type { NodeBase } from '@engine/layouts/NodeBase';
 
 export class NodeChildren {
   private readonly map = new Map<string, NodeBase>();
 
   /** Add or replace a child by id. */
   addChild(id: string, node: NodeBase): void {
+    if (!id || this.map.has(id)) throw new Error('Empty or duplicate child ID: ' + id);
     this.map.set(id, node);
   }
 
@@ -46,4 +47,6 @@ export class NodeChildren {
   values(): IterableIterator<NodeBase> {
     return this.map.values();
   }
+  clear(): void { this.map.clear(); }
+
 }

@@ -1,8 +1,10 @@
 import { DiBootstrapValidator } from '@engine/di/DiBootstrapValidator';
-import { registerSystemProviders } from '@engine/di/providers';
+import { SystemProviderRegistrar } from '@engine/di/providers';
+import { FrameDriver } from '../rendering/FrameDriver';
+import type { RenderRuntime } from '../rendering/types';
+import type { NodeBase } from '../layouts/NodeBase';
 
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '../errors';
-import { TextureAssetResolver } from '../layouts';
 import { BaseScene } from '../scenes/BaseScene';
 
 import { AssetBundlesBootTask } from './boot/AssetBundlesBootTask';
@@ -42,11 +44,8 @@ import type { BrowserInputGuard } from '../input/BrowserInputGuard';
 import type { InputChannel } from '../input/InputChannel';
 import type { InputManager } from '../input/InputManager';
 import type { SceneLayout } from '../layouts/scene/SceneLayout';
-import type { ParticlesManager } from '../particles';
-import type { PhysicsManager } from '../physics';
 import type { PlatformManager } from '../platforms';
 import type { PrefabManager } from '../prefabs';
-import type { EngineRenderPipeline } from './EngineRenderPipeline';
 import type { RuntimePhysicsStepPort } from '../runtime/RuntimePhysicsStepService';
 import type { RuntimeScheduler } from '../runtime/RuntimeScheduler';
 import type SceneManager from '../scenes/SceneManager';
@@ -59,8 +58,6 @@ import type { SceneDiEntry } from '@engine/di/SceneDiConfig';
 import type { DiContainerInterface, Provider, Token } from '@engine/di/types';
 import type { SceneRuntime } from '@engine/scenes/SceneRuntime';
 import type { SceneService } from '@engine/scenes/SceneService';
-import type { Application } from 'pixi.js';
-import type { Container } from 'pixi.js';
 
 export type { EngineOptions } from './EngineOptions';
 
@@ -86,21 +83,19 @@ export class Engine
 {
   private static readonly RuntimePausedChangedEvent = 'ENGINE__RUNTIME_PAUSED_CHANGED';
   private static readonly EmptySceneParams: Readonly<Record<string, unknown>> = Object.freeze({});
-  readonly app: Application;
+  readonly rendering: RenderRuntime;
+  readonly frames: FrameDriver;
   readonly audio: AudioManager;
   readonly assets: AssetManager;
   readonly scenes: SceneManager;
   readonly commands: CommandBus;
   readonly events: EventBus;
-  readonly renderPipeline: EngineRenderPipeline;
   readonly screen: ScreenManager;
   readonly tweens: GsapTweenManager;
   readonly input: InputManager;
   readonly inputChannel: InputChannel;
   readonly browserInputGuard: BrowserInputGuard;
   readonly prefabs: PrefabManager;
-  readonly particles: ParticlesManager;
-  readonly physics: PhysicsManager;
   readonly platform: PlatformManager;
   readonly di: EngineDi;
   readonly runtimeScheduler: RuntimeScheduler;
@@ -120,12 +115,37 @@ export class Engine
   private readonly runtimeController: EnginePauseController;
   private readonly lifecycleManager: EngineLifecycleManager;
 
+  private disposal: Promise<void> | undefined;
+  destroy(): Promise<void> {
+    this.disposal ??= this.dispose(); return this.disposal;
+  }
+  private async dispose(): Promise<void> {
+    this.frames.stop();
+    await this.lifecycleManager.dispose();
+    this.frames.stop();
+    const errors: unknown[] = [];
+    const operations = [
+      () => this.input.destroy(), () => this.browserInputGuard.dispose(),
+      () => this.runtimeController.dispose(), () => this.eventBridge.dispose(),
+      () => this.scenes.destroy(), () => this.rendering.root.destroy(),
+      () => this.tweens.dispose(), () => this.audio.dispose(), () => this.platform.dispose(),
+      () => this.screen.destroy(), () => this.rendering.destroy(), () => this.assets.destroy(),
+    ];
+    for (const operation of operations) { try { await operation(); } catch (error) { errors.push(error); } }
+    if (errors.length) throw new AggregateError(errors, 'Engine disposal failed');
+  }
+
+  private static requireRenderer(config: GameConfig) {
+    if (!config.system?.renderer) throw new Error('GameConfig.system.renderer is required');
+    return config.system.renderer;
+  }
+
   /**
    * Convenience helper that creates, initializes, mounts, and starts the engine.
    * @param containerSelector CSS selector for the root DOM element.
    * @param config Full game configuration describing assets, scenes, DI, and screen.
    */
-  static async run(containerSelector: string, config: GameConfig): Promise<void> {
+  static async run(containerSelector: string, config: GameConfig): Promise<Engine> {
     const container = document.querySelector<HTMLDivElement>(containerSelector);
     if (!container) {
       throw EngineErrorFactory.missingRequired({
@@ -138,6 +158,7 @@ export class Engine
 
     const engineOptions: EngineOptions = {
       container,
+      renderer: Engine.requireRenderer(config),
       bundles: config.assets.bundles,
       ...(config.system?.canvasBackground ? { background: config.system.canvasBackground } : {}),
       ...(config.system?.screen ? { screen: config.system.screen } : {}),
@@ -148,9 +169,15 @@ export class Engine
     const initOptions = config.system?.canvasBackground
       ? { background: config.system.canvasBackground }
       : {};
-    await engine.init(initOptions);
-    engine.mount(container);
-    await engine.start(config);
+    try {
+      await engine.init(initOptions);
+      engine.mount(container);
+      await engine.start(config);
+      return engine;
+    } catch (cause) {
+      try { await engine.destroy(); } catch (cleanup) { throw new AggregateError([cause, cleanup], 'Engine startup and cleanup failed'); }
+      throw cause;
+    }
   }
 
   /**
@@ -160,15 +187,13 @@ export class Engine
   constructor(options: EngineOptions) {
     const subsystemFactory = new EngineSubsystemFactory();
     const staticSubsystems = subsystemFactory.createStatic(options);
-    this.app = staticSubsystems.app;
+    this.rendering = staticSubsystems.rendering;
+    this.frames = new FrameDriver(() => this.rendering.renderFrame());
     this.assets = staticSubsystems.assets;
     this.audio = staticSubsystems.audio;
     this.events = staticSubsystems.events;
-    this.renderPipeline = staticSubsystems.renderPipeline;
     this.screen = staticSubsystems.screen;
     this.tweens = staticSubsystems.tweens;
-    this.particles = staticSubsystems.particles;
-    this.physics = staticSubsystems.physics;
     this.platform = staticSubsystems.platform;
     this.diContainer = staticSubsystems.diContainer;
     this.di = staticSubsystems.di;
@@ -242,15 +267,7 @@ export class Engine
 
   private async initializeRenderer(initOptions: { background?: string }): Promise<void> {
     try {
-      await this.app.init({
-        background: initOptions.background ?? '#000000',
-        // The game runtime targets WebGL explicitly; Pixi v8 has no canvas fallback renderer.
-        preference: 'webgl',
-        // Control canvas size manually via ScreenManager
-        antialias: true,
-        autoStart: false,
-        powerPreference: 'high-performance',
-      });
+      await this.rendering.init(initOptions.background ?? '#000000');
     } catch (cause) {
       throw EngineErrorFactory.create({
         code: EngineErrorCode.CoreInvariantViolation,
@@ -262,20 +279,18 @@ export class Engine
     }
 
     await this.screen.init();
-    this.renderPipeline.init(this.screen.getSnapshot());
     this.screen.setRenderRequester(this.requestRenderFrame.bind(this));
-    this.app.ticker.remove(this.app.render, this.app);
-    this.app.ticker.start();
     await this.platform.init();
-    this.audio.attachInteractionTarget(this.app.canvas);
-    this.input.attach(this.app.canvas);
-    this.browserInputGuard.attach(this.app.canvas);
+    this.audio.attachInteractionTarget(this.rendering.canvas);
+    this.input.attach(this.rendering.canvas);
+    this.browserInputGuard.attach(this.rendering.canvas);
     this.eventBridge.attach();
     this.runtimeController.attach();
+    this.frames.start();
   }
 
   private mountRenderer(container: HTMLElement): void {
-    container.appendChild(this.app.canvas);
+    for (const canvas of this.rendering.canvases) container.appendChild(canvas);
   }
 
   private async startRuntime(startConfig: GameConfig): Promise<void> {
@@ -350,6 +365,7 @@ export class Engine
   }
 
   private applyPausedState(paused: boolean): void {
+    this.input.setPaused(paused);
     this.runtimeScheduler.setPaused(paused);
     this.tweens.setRuntimePaused(paused);
     this.scenes.setRuntimePaused(paused);
@@ -360,8 +376,7 @@ export class Engine
   }
 
   private requestRenderFrame(): void {
-    this.renderPipeline.sync(this.screen.getSnapshot());
-    this.renderPipeline.renderFrame();
+    this.rendering.renderFrame();
   }
 
   private getRendererDiagnostics(): Record<string, string> {
@@ -378,20 +393,17 @@ export class Engine
    * Registers core engine services into the DI container for injection.
    */
   private registerSystemProviders(): void {
-    registerSystemProviders(this.diContainer, {
+    SystemProviderRegistrar.register(this.diContainer, {
       audioManager: this.audio,
       assetManager: this.assets,
       screenManager: this.screen,
       eventBus: this.events,
       tweens: this.tweens,
       inputManager: this.input,
-      particlesManager: this.particles,
-      physicsManager: this.physics,
       platformManager: this.platform,
       runtimePhysicsStepService: this.runtimePhysicsStepService,
       configStore: this.configStore,
       localesService: this.localesService,
-      textureAssetResolver: new TextureAssetResolver(this.assets),
     });
   }
 
@@ -461,8 +473,8 @@ export class Engine
     return this.runtimeBindings.getRequiredActiveLayout();
   }
 
-  getSceneRenderRoot(): Container {
-    return this.renderPipeline.getSceneRoot();
+  getSceneRenderRoot(): NodeBase {
+    return this.rendering.root;
   }
 
   getCurrentSceneParams(): Readonly<Record<string, unknown>> | undefined {

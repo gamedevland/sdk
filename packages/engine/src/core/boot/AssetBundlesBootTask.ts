@@ -10,7 +10,7 @@ export class AssetBundlesBootTask {
   async run(): Promise<void> {
     const preload = this.config.assets.preload ?? ['common', 'layouts'];
     for (const name of preload) {
-      await this.assets.loadBundle(name);
+      await this.assets.loadRequiredBundle(name);
     }
   }
 }

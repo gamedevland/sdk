@@ -1,4 +1,4 @@
-import type { Container } from '@engine/layouts';
+import type { Container } from '@engine/renderers/pixi';
 import type { SceneRuntime } from '@engine/scenes';
 import type { TweenManager } from '@engine/tween';
 

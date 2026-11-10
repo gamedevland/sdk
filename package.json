@@ -14,7 +14,12 @@
     "test:project-template": "node scripts/verify-project-template.mjs",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "clean": "npm run clean --workspaces --if-present"
+    "clean": "npm run clean --workspaces --if-present",
+    "test:renderers": "node scripts/verify-renderers.mjs",
+    "pack:local": "node scripts/pack-local-engine.mjs",
+    "test:local-package": "node scripts/verify-local-package.mjs",
+    "test:stability": "node scripts/verify-stability.mjs",
+    "test:archive-dependency": "node scripts/verify-archive-dependency.mjs"
   },
   "devDependencies": {
     "@types/howler": "^2.2.12",
@@ -24,7 +29,13 @@
     "esbuild": "^0.28.1",
     "rimraf": "^6.0.1",
     "tsc-alias": "^1.8.16",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vite": "^8.0.16"
+  },
+  "overrides": {
+    "archiver-utils": {
+      "glob": "14.0.2"
+    }
   }
 }
