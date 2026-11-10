@@ -4,12 +4,11 @@ The maintainer authorized public source distribution and npm publication on 2026
 The SDK source and current package releases use MIT. The publish workflow accepts publication
 only from `main` with a public source repository; validation-only runs remain available.
 
-## Current release versions
+## Current release
 
-- `@gamedevland/engine`: 0.0.9.
-- `@gamedevland/vite`: 0.1.2, depending on engine 0.0.8.
-- Vite 0.1.1 was unpublished and must not be reused. Engine 0.0.7 was superseded;
-  its withdrawal was rejected by npm because the package has registry dependents.
+Engine `0.0.13` and tooling `0.2.2` include renderer and runtime ownership changes.
+Review both migration guides before upgrading existing games. The tooling declares
+the engine as a peer so consumers use one runtime copy.
 
 ## Release procedure
 
@@ -18,8 +17,10 @@ only from `main` with a public source repository; validation-only runs remain av
    and the latest summary to the package README for npm. Commit the release changes.
 2. Run `npm ci`, `npm run build`, `npm run typecheck`,
    `npm run test:resource-cleanup --workspace @gamedevland/engine`,
-   `npm run test:screen --workspace @gamedevland/engine`, and
-   `npm test --workspace @gamedevland/vite`. There is no lint script in this workspace.
+   `npm run test:screen --workspace @gamedevland/engine`,
+   `npm run lint`, `npm test --workspace @gamedevland/engine`,
+   `npm run test:renderers`, `npm run test:stability`, and
+   `npm test --workspace @gamedevland/vite`. The lint script checks architecture and TypeScript runtime style; typecheck is separate.
 3. Run `Publish npm packages` on `main` with `publish=false` and select `engine`, `vite`,
    or `all` to match the release scope. Check that the validated commit is the release commit.
 4. Verify anonymous source access and GitHub's MIT detection for `gamedevland/sdk`.

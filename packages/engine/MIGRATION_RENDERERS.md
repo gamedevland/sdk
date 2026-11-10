@@ -27,7 +27,8 @@ an old tarball without updating its consumer and any SDK adapter libraries.
 6. Replace `engine.app` dependencies with a narrow renderer capability. For
    node-owned atlas baking, use `engine.di.get(PixiServices.TextureGenerator)`;
    it exposes `generateTexture` only. Texture lifetime belongs to its component.
-   Particle, physics and texture lookup tokens moved to `PixiServices`.
+   Particle and texture lookup tokens live in `PixiServices`. Matter is opt-in
+   through `MatterPhysicsModule` and `PhysicsServices.Manager`; see MIGRATION_RUNTIME.md.
 7. Rebuild SDK adapter libraries against this API; do not allow a second engine
    or Pixi copy in their dependency tree. Both libraries should be peers.
 8. Update lint allowlists to permit the public `/renderers/pixi` entry point.
@@ -45,8 +46,8 @@ independently, share the clock and route UI hits before world hits.
 ## Lifecycle and behavior changes
 
 - `Engine.run` returns an engine handle; `destroy` is asynchronous and idempotent.
-- Concurrent init/start calls fail immediately. Destroy waits for a pending
-  lifecycle operation before releasing its resources.
+- Concurrent init/start calls fail immediately. Destroy aborts pending
+  lifecycle observation before releasing resources; SDK continuations check cancellation.
 - Scene service entry rolls back in reverse order, including the partially entered
   service. `onSceneExit` must tolerate partial initialization and release ownership.
 - Async service hooks must settle. An arbitrary non-cooperative user promise cannot

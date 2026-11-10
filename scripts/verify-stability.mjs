@@ -7,6 +7,9 @@ import { pathToFileURL } from 'node:url';
 
 const directory = await mkdtemp(resolve('.tmp-stability-'));
 const entries = {
+  PresentationScheduler: 'runtime/PresentationScheduler',
+  RuntimeLifecycleDispatcher: 'runtime/RuntimeLifecycleDispatcher',
+  SceneManager: 'scenes/SceneManager',
   NodeComponents: 'layouts/nodes/internal/NodeComponents',
   NodeActions: 'layouts/nodes/internal/NodeActions',
   BaseComponent: 'layouts/components/BaseComponent',
@@ -112,6 +115,106 @@ try {
     const first = lifecycle.init();
     await assert.rejects(lifecycle.init(), /lifecycle state/);
     release(); await first; assert.equal(count, 1);
+  });
+  await test('engine disposal cancels a pending initializer without resurrecting lifecycle', async () => {
+    let finish, signal;
+    const lifecycle = new m.EngineLifecycleManager({initializeRenderer: (_options, lifetime) => {
+      signal = lifetime;
+      return new Promise(resolve => {finish = resolve;});
+    }});
+    const pending = lifecycle.init();
+    const cancelled = assert.rejects(pending, {name: 'AbortError'});
+    await Promise.resolve();
+    await lifecycle.dispose();
+    await cancelled;
+    assert.equal(signal.aborted, true);
+    finish();
+    await assert.rejects(lifecycle.init(), /lifecycle state/);
+  });
+  await test('scene failure, timeout and normal exit abort their authored lifetime before cleanup', async () => {
+    const engine = {
+      frames: {subscribe: () => () => {}},
+      runtimeScheduler: {notifySceneEnter() {}, notifySceneExit() {}, captureSceneRegistrationBaseline() {}, assertSceneRegistrationClean() {}},
+      clearActiveLayout() {}, clearActiveSceneFSM() {}, clearActiveSceneDi() {},
+      setActiveLayout() {}, setActiveSceneFSM() {}, setActiveSceneDi() {},
+    };
+    const manager = new m.SceneManager(engine, {transitionTimeoutMs: 10});
+    let lifetime, cleanup = 0;
+    const scene = {
+      onEnter(ctx) { lifetime = ctx.signal; },
+      onExit(ctx) { assert.equal(ctx.signal.aborted, true); cleanup++; },
+    };
+    await manager.replace(scene);
+    assert.equal(lifetime.aborted, false);
+    await manager.pop();
+    assert.equal(lifetime.aborted, true);
+    await assert.rejects(manager.replace({...scene, onEnter(ctx) {lifetime = ctx.signal; throw new Error('entry');}}));
+    assert.equal(lifetime.aborted, true);
+    await assert.rejects(manager.replace({...scene, onEnter(ctx) {lifetime = ctx.signal; return new Promise(() => {});}}));
+    assert.equal(lifetime.aborted, true);
+    assert.equal(cleanup, 3);
+    await manager.destroy();
+  });
+  await test('destroy cancels a hidden-page scene hook without waiting for a visible deadline', async () => {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, 'document');
+    const page = new EventTarget();page.hidden = true;
+    Object.defineProperty(globalThis, 'document', {configurable: true, value: page});
+    const engine = {
+      frames: {subscribe: () => () => {}},
+      runtimeScheduler: {notifySceneEnter() {}, notifySceneExit() {}, captureSceneRegistrationBaseline() {}, assertSceneRegistrationClean() {}},
+      clearActiveLayout() {}, clearActiveSceneFSM() {}, clearActiveSceneDi() {},
+      setActiveLayout() {}, setActiveSceneFSM() {}, setActiveSceneDi() {},
+    };
+    const manager = new m.SceneManager(engine);
+    let lifetime, entered;
+    const ready = new Promise(resolve => {entered = resolve;});
+    try {
+      const pending = manager.replace({onEnter(ctx) {lifetime = ctx.signal;entered();return new Promise(() => {});}, onExit() {}});
+      const cancelled = assert.rejects(pending);
+      await ready;
+      await manager.destroy();await cancelled;
+      assert.equal(lifetime.aborted, true);
+    } finally {
+      if (previous) Object.defineProperty(globalThis, 'document', previous);
+      else Reflect.deleteProperty(globalThis, 'document');
+    }
+  });
+  await test('failed scene exit still detaches the dead scene and restores the previous one', async () => {
+    let activeDi;
+    const engine = {
+      frames: {subscribe: () => () => {}},
+      runtimeScheduler: {notifySceneEnter() {}, notifySceneExit() {}, captureSceneRegistrationBaseline() {}, assertSceneRegistrationClean() {}},
+      clearActiveLayout() {}, clearActiveSceneFSM() {}, clearActiveSceneDi() {},
+      setActiveLayout() {}, setActiveSceneFSM() {}, setActiveSceneDi(value) {activeDi = value;},
+    };
+    const manager = new m.SceneManager(engine);
+    const first = {onEnter() {}, onExit() {}, getSceneDi: () => 'first'};
+    await manager.replace(first);
+    await manager.push({onEnter() {}, onExit() {throw new Error('cleanup');}});
+    await assert.rejects(manager.pop());
+    assert.equal(manager.activeScene, first);
+    assert.equal(activeDi, 'first');
+    await manager.destroy();
+  });
+  await test('runtime system entry rolls back the failing participant and cleanup continues past errors', () => {
+    const dispatcher = new m.RuntimeLifecycleDispatcher(), calls = [];
+    const systems = ['a', 'b', 'c'].map(key => ({key,
+      onSceneEnter() {calls.push('enter:' + key); if (key === 'b') throw new Error('entry');},
+      onSceneExit() {calls.push('exit:' + key); if (key === 'b') throw new Error('exit');},
+    }));
+    assert.throws(() => dispatcher.notifySceneEnter({}, systems), AggregateError);
+    assert.deepEqual(calls, ['enter:a', 'enter:b', 'exit:b', 'exit:a']);
+    calls.length = 0;
+    assert.throws(() => dispatcher.notifySceneExit({}, systems), AggregateError);
+    assert.deepEqual(calls, ['exit:c', 'exit:b', 'exit:a']);
+  });
+  await test('presentation callbacks of a covered scene pause and resume with its active layout', () => {
+    const scheduler = new m.PresentationScheduler(), first = {}, second = {}, calls = [];
+    scheduler.subscribe(() => calls.push('first'), {layout: first});
+    scheduler.subscribe(() => calls.push('second'), {layout: second});
+    scheduler.subscribe(() => calls.push('global'));
+    scheduler.tick(.01, first); scheduler.tick(.01, second); scheduler.tick(.01, first);
+    assert.deepEqual(calls, ['first', 'global', 'second', 'global', 'first', 'global']);
   });
 } finally {
   await rm(directory, {recursive: true, force: true});

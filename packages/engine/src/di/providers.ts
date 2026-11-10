@@ -20,81 +20,86 @@ import type { GsapTweenManager } from '@engine/tween';
  * - The container caches singleton instances per scope; child scopes will have their own caches.
  */
 export class SystemProviderRegistrar {
-static register(
-  container: DiContainer,
-  services: {
-    audioManager: AudioManager;
-    assetManager: AssetManager;
-    screenManager: ScreenManager;
-    eventBus: EventBus;
-    tweens: GsapTweenManager;
-    inputManager: InputManager;
-    platformManager: PlatformManager;
-    runtimePhysicsStepService: RuntimePhysicsStepPort;
-    configStore: ConfigStore;
-    localesService: LocalesService;
-  },
-): void {
-  container.register({
-    token: SystemServices.AudioManager,
-    useValue: services.audioManager,
-    lifetime: 'singleton',
-    source: 'system',
-  });
-  container.register({
-    token: SystemServices.AssetManager,
-    useValue: services.assetManager,
-    lifetime: 'singleton',
-    source: 'system',
-  });
-  container.register({
-    token: SystemServices.ScreenManager,
-    useValue: services.screenManager,
-    lifetime: 'singleton',
-    source: 'system',
-  });
-  container.register({
-    token: SystemServices.EventBus,
-    useValue: services.eventBus,
-    lifetime: 'singleton',
-    source: 'system',
-  });
-  container.register({
-    token: SystemServices.Tweens,
-    useValue: services.tweens,
-    lifetime: 'singleton',
-    source: 'system',
-  });
-  container.register({
-    token: SystemServices.InputManager,
-    useValue: services.inputManager,
-    lifetime: 'singleton',
-    source: 'system',
-  });
-  container.register({
-    token: SystemServices.PlatformManager,
-    useValue: services.platformManager,
-    lifetime: 'singleton',
-    source: 'system',
-  });
-  container.register({
-    token: SystemServices.RuntimePhysicsStepService,
-    useValue: services.runtimePhysicsStepService,
-    lifetime: 'singleton',
-    source: 'system',
-  });
-  container.register({
-    token: SystemServices.ConfigStore,
-    useValue: services.configStore,
-    lifetime: 'singleton',
-    source: 'system',
-  });
-  container.register({
-    token: SystemServices.LocalesService,
-    useValue: services.localesService,
-    lifetime: 'singleton',
-    source: 'system',
-  });
-}
-
+  static register(
+    container: DiContainer,
+    services: {
+      audioManager: AudioManager;
+      assetManager: AssetManager;
+      screenManager: ScreenManager;
+      eventBus: EventBus;
+      tweens: GsapTweenManager;
+      inputManager: InputManager;
+      platformManager: PlatformManager;
+      runtimePhysicsStepService: RuntimePhysicsStepPort;
+      configStore: ConfigStore;
+      localesService: LocalesService;
+      persistentStorage: import('../configs').PersistentStorageAdapter;
+    },
+  ): void {
+    container.register({
+      token: SystemServices.PersistentStorage,
+      useValue: services.persistentStorage,
+      source: 'system',
+    });
+    container.register({
+      token: SystemServices.AudioManager,
+      useValue: services.audioManager,
+      lifetime: 'singleton',
+      source: 'system',
+    });
+    container.register({
+      token: SystemServices.AssetManager,
+      useValue: services.assetManager,
+      lifetime: 'singleton',
+      source: 'system',
+    });
+    container.register({
+      token: SystemServices.ScreenManager,
+      useValue: services.screenManager,
+      lifetime: 'singleton',
+      source: 'system',
+    });
+    container.register({
+      token: SystemServices.EventBus,
+      useValue: services.eventBus,
+      lifetime: 'singleton',
+      source: 'system',
+    });
+    container.register({
+      token: SystemServices.Tweens,
+      useValue: services.tweens,
+      lifetime: 'singleton',
+      source: 'system',
+    });
+    container.register({
+      token: SystemServices.InputManager,
+      useValue: services.inputManager,
+      lifetime: 'singleton',
+      source: 'system',
+    });
+    container.register({
+      token: SystemServices.PlatformManager,
+      useValue: services.platformManager,
+      lifetime: 'singleton',
+      source: 'system',
+    });
+    container.register({
+      token: SystemServices.RuntimePhysicsStepService,
+      useValue: services.runtimePhysicsStepService,
+      lifetime: 'singleton',
+      source: 'system',
+    });
+    container.register({
+      token: SystemServices.ConfigStore,
+      useValue: services.configStore,
+      lifetime: 'singleton',
+      source: 'system',
+    });
+    container.register({
+      token: SystemServices.LocalesService,
+      useValue: services.localesService,
+      lifetime: 'singleton',
+      source: 'system',
+    });
+  }
 }

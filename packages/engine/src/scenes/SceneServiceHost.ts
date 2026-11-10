@@ -52,6 +52,7 @@ export class SceneServiceHost {
     try {
       this.resolveServices();
       for (const entry of this.resolved) {
+        ctx.signal?.throwIfAborted();
         if (this.disposalRequested) throw new Error('Scene service initialization cancelled by disposal');
         this.entered.push(entry);
         if (!entry.service.onSceneEnter) continue;
@@ -64,13 +65,18 @@ export class SceneServiceHost {
           this.clearLifecycleDebugState();
         }
       }
+      ctx.signal?.throwIfAborted();
       if (this.disposalRequested) throw new Error('Scene service initialization cancelled by disposal');
       this.state = 'running';
     } catch (cause) {
       this.state = 'disposing';
-      try { await this.exitServices(ctx); }
-      catch (cleanup) { throw new AggregateError([cause, cleanup], 'Scene service entry and rollback failed'); }
-      finally { this.state = 'disposed'; }
+      try {
+        await this.exitServices(ctx);
+      } catch (cleanup) {
+        throw new AggregateError([cause, cleanup], 'Scene service entry and rollback failed');
+      } finally {
+        this.state = 'disposed';
+      }
       throw cause;
     }
   }
@@ -128,8 +134,11 @@ export class SceneServiceHost {
     // An in-flight hook retains its context until it settles and rolls back.
     await this.initialization?.catch(() => undefined);
     this.state = 'disposing';
-    try { await this.exitServices(ctx); }
-    finally { this.state = 'disposed'; }
+    try {
+      await this.exitServices(ctx);
+    } finally {
+      this.state = 'disposed';
+    }
   }
 
   private async exitServices(ctx: SceneServiceContext): Promise<void> {
@@ -193,10 +202,7 @@ export class SceneServiceHost {
     };
   }
 
-  private setLifecycleDebugState(
-    token: Token<SceneService>,
-    hook: 'onSceneEnter' | 'onSceneExit',
-  ): void {
+  private setLifecycleDebugState(token: Token<SceneService>, hook: 'onSceneEnter' | 'onSceneExit'): void {
     this.lifecycleHook = hook;
     this.lifecycleToken = this.tokenToDebugString(token);
   }

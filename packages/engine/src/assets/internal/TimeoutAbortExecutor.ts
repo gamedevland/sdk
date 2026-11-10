@@ -1,35 +1,42 @@
+import { AbortableOperation } from '../../lifecycle/AbortableOperation';
 import { RetryTimeoutError } from './RetryTimeoutError';
-
-/**
- * Executes one async attempt with timeout-driven abort semantics.
- */
+/** A bounded attempt with cooperative abort and cleanup of an uncooperative late result. */
 export class TimeoutAbortExecutor {
-  private static readonly ABORT_ERROR_NAME = 'AbortError';
-
   constructor(private readonly timeoutMs: number) {}
 
-  async run<T>(attemptNumber: number, fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  async run<T>(
+    attemptNumber: number,
+    fn: (signal: AbortSignal) => Promise<T>,
+    parentSignal?: AbortSignal,
+    onLateValue?: (value: T) => void,
+  ): Promise<T> {
+    parentSignal?.throwIfAborted();
     const controller = new AbortController();
-    let timedOut = false;
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, this.timeoutMs);
-
+    const abort = (): void => controller.abort(parentSignal?.reason);
+    parentSignal?.addEventListener('abort', abort, { once: true });
+    const timer = setTimeout(
+      () =>
+        controller.abort(
+          new RetryTimeoutError(
+            this.timeoutMs,
+            attemptNumber,
+            new DOMException('Attempt timed out', 'AbortError'),
+          ),
+        ),
+      this.timeoutMs,
+    );
     try {
-      return await fn(controller.signal);
-    } catch (error) {
-      if (timedOut && TimeoutAbortExecutor.isAbortError(error)) {
-        throw new RetryTimeoutError(this.timeoutMs, attemptNumber, error);
-      }
-      throw error;
+      return await AbortableOperation.wait(
+        Promise.resolve().then(() => {
+          controller.signal.throwIfAborted();
+          return fn(controller.signal);
+        }),
+        controller.signal,
+        onLateValue,
+      );
     } finally {
-      clearTimeout(timeoutId);
+      clearTimeout(timer);
+      parentSignal?.removeEventListener('abort', abort);
     }
-  }
-
-  private static isAbortError(error: unknown): boolean {
-    if (!(error instanceof Error)) return false;
-    return error.name === TimeoutAbortExecutor.ABORT_ERROR_NAME;
   }
 }

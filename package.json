@@ -20,7 +20,8 @@
     "test:local-package": "node scripts/verify-local-package.mjs",
     "test:stability": "node scripts/verify-stability.mjs",
     "test:archive-dependency": "node scripts/verify-archive-dependency.mjs",
-    "test:three-texture": "node scripts/verify-three-texture.mjs"
+    "test:three-texture": "node scripts/verify-three-texture.mjs",
+    "lint": "node scripts/verify-architecture.mjs"
   },
   "devDependencies": {
     "@types/howler": "^2.2.12",

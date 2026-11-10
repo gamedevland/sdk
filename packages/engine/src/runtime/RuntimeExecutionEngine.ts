@@ -1,3 +1,4 @@
+import type { RuntimeDiagnostics } from '../diagnostics';
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
 import type { RuntimeSchedulerProfilingMonitor } from './RuntimeSchedulerProfilingMonitor';
@@ -9,7 +10,10 @@ type RuntimeTickMethod = 'tick' | 'tickSystem';
 export class RuntimeExecutionEngine<TScene extends Scene = Scene> {
   private frame = 0;
 
-  constructor(private readonly profilingMonitor: RuntimeSchedulerProfilingMonitor) {}
+  constructor(
+    private readonly profilingMonitor: RuntimeSchedulerProfilingMonitor,
+    private readonly diagnostics?: RuntimeDiagnostics,
+  ) {}
 
   tickAll(
     dt: number,
@@ -21,7 +25,11 @@ export class RuntimeExecutionEngine<TScene extends Scene = Scene> {
     this.runSystems(dt, updateCtx, systems);
   }
 
-  tickSystem(dt: number, ctx: Omit<RuntimeUpdateContext<TScene>, 'frame'>, system: RuntimeSystem<TScene>): void {
+  tickSystem(
+    dt: number,
+    ctx: Omit<RuntimeUpdateContext<TScene>, 'frame'>,
+    system: RuntimeSystem<TScene>,
+  ): void {
     this.validateDt(dt, 'tickSystem');
     const updateCtx = this.nextUpdateContext(ctx);
     this.runSystems(dt, updateCtx, [system]);
@@ -40,7 +48,7 @@ export class RuntimeExecutionEngine<TScene extends Scene = Scene> {
     ctx: RuntimeUpdateContext<TScene>,
     systems: readonly RuntimeSystem<TScene>[],
   ): void {
-    if (!this.profilingMonitor.isEnabled()) {
+    if (!this.profilingMonitor.isEnabled() && !this.diagnostics?.observed) {
       for (const system of systems) {
         system.update(dt, ctx);
       }
@@ -51,8 +59,13 @@ export class RuntimeExecutionEngine<TScene extends Scene = Scene> {
     let systemDurationMs = 0;
     for (const system of systems) {
       const systemStart = performance.now();
-      system.update(dt, ctx);
-      systemDurationMs += performance.now() - systemStart;
+      try {
+        system.update(dt, ctx);
+      } finally {
+        const durationMs = performance.now() - systemStart;
+        systemDurationMs += durationMs;
+        this.diagnostics?.report({ kind: 'timing', source: system.key, durationMs, frame: ctx.frame });
+      }
     }
     // System work is not scheduler overhead. Keep only dispatch and profiling cost.
     const schedulerDurationMs = Math.max(0, performance.now() - frameStart - systemDurationMs);

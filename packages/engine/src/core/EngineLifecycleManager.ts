@@ -1,17 +1,28 @@
+import { AbortableOperation } from '../lifecycle/AbortableOperation';
 import { EngineErrorCode, EngineErrorFactory, EngineSubsystem } from '@engine/errors';
 
 import type { GameConfig } from './GameConfig';
 
-type EngineLifecycleState = 'created' | 'initializing' | 'initialized' | 'mounted' | 'starting' | 'started' | 'disposing' | 'disposed' | 'failed';
+type EngineLifecycleState =
+  | 'created'
+  | 'initializing'
+  | 'initialized'
+  | 'mounted'
+  | 'starting'
+  | 'started'
+  | 'disposing'
+  | 'disposed'
+  | 'failed';
 
 interface EngineLifecycleManagerHooks {
-  initializeRenderer(options: { background?: string }): Promise<void>;
+  initializeRenderer(options: { background?: string }, signal: AbortSignal): Promise<void>;
   mountRenderer(container: HTMLElement): void;
-  startRuntime(config: GameConfig): Promise<void>;
+  startRuntime(config: GameConfig, signal: AbortSignal): Promise<void>;
 }
 
 export class EngineLifecycleManager {
   private lifecycleState: EngineLifecycleState = 'created';
+  private readonly controller = new AbortController();
   private pending: Promise<void> | undefined;
 
   constructor(private readonly hooks: EngineLifecycleManagerHooks) {}
@@ -19,7 +30,10 @@ export class EngineLifecycleManager {
   async init(options: { background?: string } = {}): Promise<void> {
     this.assertLifecycleState('created', 'Engine.init');
     this.lifecycleState = 'initializing';
-    await this.runPending(() => this.hooks.initializeRenderer(options), 'initialized');
+    await this.runPending(
+      () => this.hooks.initializeRenderer(options, this.controller.signal),
+      'initialized',
+    );
   }
 
   mount(container: HTMLElement): void {
@@ -31,17 +45,24 @@ export class EngineLifecycleManager {
   async start(config: GameConfig): Promise<void> {
     this.assertLifecycleState('mounted', 'Engine.start');
     this.lifecycleState = 'starting';
-    await this.runPending(() => this.hooks.startRuntime(config), 'started');
+    await this.runPending(() => this.hooks.startRuntime(config, this.controller.signal), 'started');
   }
 
   async dispose(): Promise<void> {
     this.lifecycleState = 'disposing';
+    this.controller.abort(new DOMException('Engine disposed', 'AbortError'));
     await this.pending?.catch(() => undefined);
     this.lifecycleState = 'disposed';
   }
 
   private async runPending(operation: () => Promise<void>, next: 'initialized' | 'started'): Promise<void> {
-    this.pending = Promise.resolve().then(operation);
+    this.pending = AbortableOperation.wait(
+      Promise.resolve().then(() => {
+        this.controller.signal.throwIfAborted();
+        return operation();
+      }),
+      this.controller.signal,
+    );
     try {
       await this.pending;
       if (this.lifecycleState === 'disposing' || this.lifecycleState === 'disposed') {
@@ -49,15 +70,13 @@ export class EngineLifecycleManager {
       }
       this.lifecycleState = next;
     } catch (error) {
-      if (this.lifecycleState !== 'disposing' && this.lifecycleState !== 'disposed') this.lifecycleState = 'failed';
+      if (this.lifecycleState !== 'disposing' && this.lifecycleState !== 'disposed')
+        this.lifecycleState = 'failed';
       throw error;
     }
   }
 
-  private assertLifecycleState(
-    expected: 'created' | 'initialized' | 'mounted',
-    method: string,
-  ): void {
+  private assertLifecycleState(expected: 'created' | 'initialized' | 'mounted', method: string): void {
     if (this.lifecycleState === expected) {
       return;
     }

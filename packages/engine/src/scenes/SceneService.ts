@@ -4,6 +4,7 @@ import type { SceneLayout } from '@engine/layouts';
 
 export interface SceneServiceContext {
   readonly sceneKey: string;
+  readonly signal?: AbortSignal;
   readonly engine: SceneRuntime;
   readonly layout: SceneLayout;
   readonly sceneDi: DiContainerInterface;

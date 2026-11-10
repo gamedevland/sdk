@@ -1,6 +1,6 @@
 /**
  * Tuning knobs for input recognition and normalization.
- * All fields are optional; defaults are applied via defaultInputConfig.
+ * All fields are optional; defaults are applied via InputDefaults.
  */
 export interface InputConfig {
   /** Maximum pointer travel in virtual pixels to still qualify as a tap. */
@@ -19,23 +19,14 @@ export interface InputConfig {
   wheelScale?: number; // multiplier
 }
 
-export const defaultInputConfig: Required<
-  Pick<
-    InputConfig,
-    | 'tapMaxDistance'
-    | 'tapMaxDuration'
-    | 'doubleTapTimeout'
-    | 'longPressDuration'
-    | 'dragStartDistance'
-    | 'throttleMoveMs'
-    | 'wheelScale'
-  >
-> = {
-  tapMaxDistance: 8,
-  tapMaxDuration: 220,
-  doubleTapTimeout: 280,
-  longPressDuration: 450,
-  dragStartDistance: 6,
-  throttleMoveMs: 0,
-  wheelScale: 1,
-};
+export class InputDefaults {
+  static readonly config: Readonly<Required<InputConfig>> = Object.freeze({
+    tapMaxDistance: 8,
+    tapMaxDuration: 220,
+    doubleTapTimeout: 280,
+    longPressDuration: 450,
+    dragStartDistance: 6,
+    throttleMoveMs: 0,
+    wheelScale: 1,
+  });
+}

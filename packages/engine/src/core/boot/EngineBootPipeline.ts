@@ -1,11 +1,14 @@
+import { AbortableOperation } from '../../lifecycle/AbortableOperation';
+
 import type { EngineBootTask } from './EngineBootTask';
 
 export class EngineBootPipeline {
   constructor(private readonly tasks: readonly EngineBootTask[]) {}
 
-  async run(): Promise<void> {
+  async run(signal?: AbortSignal): Promise<void> {
     for (const task of this.tasks) {
-      await task.run();
+      signal?.throwIfAborted();
+      await AbortableOperation.wait(task.run(signal), signal);
     }
   }
 }

@@ -67,6 +67,9 @@ jobs:
       - name: Typecheck workspace
         run: npm run typecheck
 
+      - name: Validate architecture
+        run: npm run lint
+
       - name: Test engine
         run: npm test --workspace @gamedevland/engine
 

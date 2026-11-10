@@ -1,18 +1,13 @@
 import { RuleBasedValidator, type Rule } from '../core/RuleBasedValidator';
-import { isObject } from '../rules/guards';
+import { LayoutGuards } from '../rules/guards';
 
 import type { ValidatorRegistry } from '../core/Validator';
-import type {
-  ActionConfig,
-  ComponentConfig,
-  DisplayConfig,
-  ElementConfig,
-} from '@engine/layouts/types';
+import type { ActionConfig, ComponentConfig, DisplayConfig, ElementConfig } from '@engine/layouts/types';
 import type { ValidationIssue } from '@engine/validation';
 
 export class ElementValidator extends RuleBasedValidator<ElementConfig> {
   constructor(private readonly registry: ValidatorRegistry) {
-    const guard = (v: unknown): v is ElementConfig => isObject(v) && typeof v.type === 'string';
+    const guard = (v: unknown): v is ElementConfig => LayoutGuards.isObject(v) && typeof v.type === 'string';
     const makeRules = (registry: ValidatorRegistry): Rule<ElementConfig>[] => [
       // extends
       (el, ctx) => {
@@ -43,19 +38,19 @@ export class ElementValidator extends RuleBasedValidator<ElementConfig> {
         const v = el.children;
         if (v === undefined) return [];
         if (el.type !== 'Container' && el.type !== 'Group') {
-          return [{
-            path: ctx.path + '.children',
-            message: 'children are allowed only on Container nodes',
-          }];
+          return [
+            {
+              path: ctx.path + '.children',
+              message: 'children are allowed only on Container nodes',
+            },
+          ];
         }
-        if (!isObject(v))
+        if (!LayoutGuards.isObject(v))
           return [{ path: ctx.path + '.children', message: 'children must be object' }];
         const issues: ValidationIssue[] = [];
         for (const [id, child] of Object.entries(v)) {
           const path = ctx.path + '.children.' + id;
-          const res = registry
-            .get<ElementConfig>('element')
-            .validate(child, { ...ctx, path, registry });
+          const res = registry.get<ElementConfig>('element').validate(child, { ...ctx, path, registry });
           if (!res.ok) issues.push(...res.issues);
         }
         return issues;
@@ -64,7 +59,7 @@ export class ElementValidator extends RuleBasedValidator<ElementConfig> {
       (el, ctx) => {
         const v = el.components;
         if (v === undefined) return [];
-        if (!isObject(v))
+        if (!LayoutGuards.isObject(v))
           return [{ path: ctx.path + '.components', message: 'components must be object' }];
         const issues: ValidationIssue[] = [];
         for (const [name, c] of Object.entries(v)) {
@@ -79,7 +74,7 @@ export class ElementValidator extends RuleBasedValidator<ElementConfig> {
       (el, ctx) => {
         const v = el.actions;
         if (v === undefined) return [];
-        if (!isObject(v))
+        if (!LayoutGuards.isObject(v))
           return [{ path: ctx.path + '.actions', message: 'actions must be object' }];
         const issues: ValidationIssue[] = [];
         for (const [name, a] of Object.entries(v)) {

@@ -12,6 +12,10 @@
 - Make audio handle cleanup idempotent after completion, errors, mute, stop-all and disposal.
 - Keep visible embedded games running after focus loss; preserve visibility, manual, platform and ad pauses.
 - Preserve second-pointer movement during an active drag for multi-touch controls.
+- Add owner disposal scopes, cancellable boot/scene work and strict shared asset loading with explicit cache eviction.
+- Make persistence engine-owned with explicit platform-exclusive/mirror policies; separate optional Matter physics from renderers.
+- Add ordered camera/world/UI presentation, observational diagnostics, DI cycle errors and architecture lint.
+- Breaking: migrate storage adapters/policies and opt into MatterPhysicsModule; see MIGRATION_RUNTIME.md.
 - Breaking: select a renderer explicitly and move concrete Pixi imports to `/renderers/pixi`; see MIGRATION_RENDERERS.md.
 
 ## 0.0.12 — 2026-11-07

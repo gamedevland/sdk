@@ -15,7 +15,7 @@ import type { SceneLayout } from "../../layouts/scene/SceneLayout";
 import type { RenderRuntime } from "../../rendering/types";
 import type { ScreenConfig, ScreenStateSnapshot } from "../../screen/types";
 export class PixiRuntime implements RenderRuntime {
-  readonly mode = "pixi";
+  readonly mode = 'pixi';
   private initialized = false;
   private disposed = false;
   private warmup: RendererWarmup | undefined;
@@ -41,24 +41,24 @@ export class PixiRuntime implements RenderRuntime {
     return this.app.renderer.resolution;
   }
   async init(background: string): Promise<void> {
-    if (this.disposed) throw new Error("Pixi runtime is disposed");
+    if (this.disposed) throw new Error('Pixi runtime is disposed');
     if (this.initialized) return;
     await this.app.init({
-      background: this.transparent ? "#000000" : background,
+      background: this.transparent ? '#000000' : background,
       backgroundAlpha: this.transparent ? 0 : 1,
-      preference: "webgl",
+      preference: 'webgl',
       antialias: true,
       autoStart: false,
     });
+    if (this.disposed) {
+      this.app.destroy(true, { children: true });
+      throw new Error('Pixi runtime disposed during initialization');
+    }
     this.initialized = true;
     this.app.ticker.stop();
   }
   resize(snapshot: ScreenStateSnapshot, resolution: number): void {
-    this.app.renderer.resize(
-      snapshot.canvas.width,
-      snapshot.canvas.height,
-      resolution,
-    );
+    this.app.renderer.resize(snapshot.canvas.width, snapshot.canvas.height, resolution);
     this.canvas.style.width = `${snapshot.viewport.width}px`;
     this.canvas.style.height = `${snapshot.viewport.height}px`;
     this.pipeline.sync(snapshot);
@@ -122,12 +122,18 @@ export class PixiRuntime implements RenderRuntime {
     const errors: unknown[] = [];
     const operations = [
       () => this.particles.destroyAll(),
-      () => { if (this.initialized) this.app.destroy(true, { children: true }); },
+      () => {
+        if (this.initialized) this.app.destroy(true, { children: true });
+      },
       () => this.pipeline.destroy(),
       () => this.textures?.destroy(),
     ];
     for (const operation of operations) {
-      try { operation(); } catch (error) { errors.push(error); }
+      try {
+        operation();
+      } catch (error) {
+        errors.push(error);
+      }
     }
     if (errors.length) throw new AggregateError(errors, 'Pixi renderer disposal failed');
   }

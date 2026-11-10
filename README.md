@@ -18,7 +18,7 @@ such as `@gamedevland/engine/assets` and `@gamedevland/engine/scenes`.
 
 | Date | Package | Version | Summary |
 | --- | --- | --- | --- |
-| 2026-11-10 | Engine | [0.0.13](packages/engine/CHANGELOG.md#0013--2026-11-10) | Add Pixi/Three/hybrid renderers and embedded Three textures; fix warmup, lifecycle and audio cleanup. |
+| 2026-11-10 | Engine | [0.0.13](packages/engine/CHANGELOG.md#0013--2026-11-10) | Add Pixi/Three/hybrid renderers and embedded Three textures; fix warmup/audio cleanup and add explicit resource/storage ownership. |
 | 2026-11-10 | Vite | [0.2.2](packages/vite/CHANGELOG.md#022--2026-11-10) | Generate renderer-aware projects and use a single engine peer. |
 | 2026-11-07 | Engine | [0.0.12](packages/engine/CHANGELOG.md#0012--2026-11-07) | Add Playgama Bridge v2: ads, saves, lifecycle and host pause/audio. |
 | 2026-11-07 | Vite | [0.2.1](packages/vite/CHANGELOG.md#021--2026-11-07) | Add Playgama builds; generated projects use engine 0.0.12. |
@@ -66,7 +66,8 @@ npm install --save-dev vite typescript
 See the package READMEs for API usage and the expected game project structure.
 The SDK is pre-1.0; review release changes before updating an existing game.
 Engine 0.0.13 requires explicit renderer selection and updated Pixi imports;
-follow [the renderer migration](packages/engine/MIGRATION_RENDERERS.md) when upgrading.
+follow [the renderer migration](packages/engine/MIGRATION_RENDERERS.md) and
+[the storage/physics migration](packages/engine/MIGRATION_RUNTIME.md) when upgrading.
 
 ## Work on the SDK
 

@@ -1,4 +1,4 @@
-import { defaultInputConfig, type InputConfig } from './config';
+import { InputDefaults, type InputConfig } from './config';
 import { InputRouter } from './InputRouter';
 import type { HitTester } from '../rendering/types';
 import { PointerTracker } from './PointerTracker';
@@ -337,7 +337,7 @@ export class InputManager {
    * Builds a normalized configuration by applying defaults and user overrides.
    */
   private buildConfig(cfg?: InputConfig) {
-    return { ...defaultInputConfig, ...(cfg ?? {}) };
+    return { ...InputDefaults.config, ...(cfg ?? {}) };
   }
 
   private finalizePointer(pointerId: number): void {
@@ -376,10 +376,7 @@ export class InputManager {
     return 'mouse';
   }
 
-  private reportUnexpectedTerminalPointerEvent(
-    type: 'pointerup' | 'pointercancel',
-    id: number,
-  ): void {
+  private reportUnexpectedTerminalPointerEvent(type: 'pointerup' | 'pointercancel', id: number): void {
     console.warn(`[InputManager] Ignored ${type} for unknown pointerId=${String(id)}`);
   }
 }

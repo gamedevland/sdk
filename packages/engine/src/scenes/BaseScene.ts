@@ -44,7 +44,9 @@ export class BaseScene implements Scene {
     if (!this.runtimeEngine) throw new Error('Scene engine is not initialized');
     return this.runtimeEngine;
   }
-  protected set engine(value: SceneManagerRuntime) { this.runtimeEngine = value; }
+  protected set engine(value: SceneManagerRuntime) {
+    this.runtimeEngine = value;
+  }
   /** Optional finite state machine that drives scene logic. */
   protected fsm?: SceneFSM;
   /** Scene params supplied via SceneManager transition options. */
@@ -55,6 +57,7 @@ export class BaseScene implements Scene {
   protected serviceHost: SceneServiceHost | undefined;
   private sceneDiDisposed = false;
   private lifecycleDebugStage = 'idle';
+  private sceneSignal: AbortSignal | undefined;
 
   /**
    * Creates a new BaseScene with a provided configuration.
@@ -68,17 +71,17 @@ export class BaseScene implements Scene {
    * Optional preload step. Loads asset bundles and individual asset ids if provided in config.
    * Runs before onEnter. Override only if you need custom preload logic in addition to the default.
    */
-  async preload({ engine }: SceneContext): Promise<void> {
+  async preload({ engine, signal }: SceneContext): Promise<void> {
     this.lifecycleDebugStage = 'preload:load-assets';
     this.engine = engine;
     const bundles = this.config.assets?.bundles ?? [];
     const ids = this.config.assets?.ids ?? [];
     // Load asset bundles sequentially to keep memory/ordering predictable.
     if (bundles.length > 0) {
-      for (const b of bundles) await engine.assets.loadRequiredBundle(b);
+      for (const b of bundles) await engine.assets.loadRequiredBundle(b, signal ? { signal } : undefined);
     }
     // Load standalone assets if defined.
-    if (ids.length > 0) await engine.assets.load(ids);
+    if (ids.length > 0) await engine.assets.loadRequired(ids, signal ? { signal } : undefined);
     this.lifecycleDebugStage = 'preload:completed';
   }
 
@@ -86,7 +89,9 @@ export class BaseScene implements Scene {
    * Mandatory enter step. Attaches the scene root to the stage, loads the layout if defined,
    * initializes FSM when configured and finally calls the {@link create} hook.
    */
-  async onEnter({ engine, params }: SceneContext): Promise<void> {
+  async onEnter({ engine, params, signal }: SceneContext): Promise<void> {
+    signal?.throwIfAborted();
+    this.sceneSignal = signal;
     this.lifecycleDebugStage = 'onEnter:init-scene-di';
     this.engine = engine;
     this.params = params;
@@ -107,7 +112,10 @@ export class BaseScene implements Scene {
       // Load layout and pass the whole ScreenManager so responsive rules can use real screen data.
       this.lifecycleDebugStage = 'onEnter:load-layout';
       this.layout = await SceneLayoutFactory.load(engine, name, layoutBuildOptions);
-      if (this.disposal) { await this.layout.destroy(); throw new Error('Scene expired during layout loading'); }
+      if (this.disposal || this.sceneSignal?.aborted) {
+        await this.layout.destroy();
+        throw new Error('Scene expired during layout loading');
+      }
       // Attach layout's root display object to the scene root container.
       this.lifecycleDebugStage = 'onEnter:attach-layout';
       this.root.attach(this.layout.root);
@@ -116,15 +124,18 @@ export class BaseScene implements Scene {
       engine.setActiveSceneDi(this.sceneDi);
       this.lifecycleDebugStage = 'onEnter:bootstrap-scene-configs';
       await engine.bootstrapSceneConfigs(this.config.key);
+      this.sceneSignal?.throwIfAborted();
       if (this.disposal) throw new Error('Scene expired during config loading');
       this.lifecycleDebugStage = 'onEnter:init-scene-services';
       await this.initSceneServices(this.layout);
+      this.sceneSignal?.throwIfAborted();
       if (this.disposal) throw new Error('Scene expired during service initialization');
       this.lifecycleDebugStage = 'onEnter:activate-layout';
       this.layout.activate();
 
       this.lifecycleDebugStage = 'onEnter:warmup-renderer';
       await engine.rendering.warmupScene?.();
+      this.sceneSignal?.throwIfAborted();
       if (this.disposal) throw new Error('Scene expired during renderer warmup');
 
       // Initialize scene FSM if provided in config. FSM can react to events, commands and layout.
@@ -140,10 +151,12 @@ export class BaseScene implements Scene {
         // Start FSM once everything visual is ready.
         this.lifecycleDebugStage = 'onEnter:start-fsm';
         await this.fsm.start();
+        this.sceneSignal?.throwIfAborted();
       }
       // Allow subclasses to build their scene once layout and FSM (if any) are ready.
       this.lifecycleDebugStage = 'onEnter:create';
       await this.create();
+      this.sceneSignal?.throwIfAborted();
     }
     this.lifecycleDebugStage = 'onEnter:completed';
   }
@@ -165,9 +178,10 @@ export class BaseScene implements Scene {
    */
   private disposal: Promise<void> | undefined;
   onExit(ctx: SceneContext): Promise<void> {
-    this.disposal ??= this.disposeScene(ctx); return this.disposal;
+    this.disposal ??= this.disposeScene(ctx);
+    return this.disposal;
   }
-  private async disposeScene({engine}: SceneContext): Promise<void> {
+  private async disposeScene({ engine }: SceneContext): Promise<void> {
     const layout = this.layout;
     const fsm = this.fsm;
     const sceneDi = this.sceneDi;
@@ -176,14 +190,29 @@ export class BaseScene implements Scene {
     const errors: unknown[] = [];
     const operations = [
       () => fsm?.deactivate(),
-      async () => { if (layout && sceneDi && host) await host.dispose(this.createSceneServiceContext(layout)); },
-      () => { if (layout) engine.rendering.cleanup(layout.root); },
-      () => layout?.destroy(), () => root?.destroy(),
-      () => engine.clearActiveLayout(layout), () => engine.clearActiveSceneFSM(fsm),
-      () => this.disposeSceneDi(), () => engine.clearActiveSceneDi(sceneDi),
+      async () => {
+        if (layout && sceneDi && host) await host.dispose(this.createSceneServiceContext(layout));
+      },
+      () => {
+        if (layout) engine.rendering.cleanup(layout.root);
+      },
+      () => layout?.destroy(),
+      () => root?.destroy(),
+      () => engine.clearActiveLayout(layout),
+      () => engine.clearActiveSceneFSM(fsm),
+      () => this.disposeSceneDi(),
+      () => engine.clearActiveSceneDi(sceneDi),
     ];
-    for (const operation of operations) { try { await operation(); } catch (error) { errors.push(error); } }
-    this.serviceHost = undefined; this.renderRoot = undefined; this.params = undefined;
+    for (const operation of operations) {
+      try {
+        await operation();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    this.serviceHost = undefined;
+    this.renderRoot = undefined;
+    this.params = undefined;
     this.lifecycleDebugStage = 'onExit:completed';
     if (errors.length) throw new AggregateError(errors, 'Scene disposal failed: ' + this.config.key);
   }
@@ -325,6 +354,7 @@ export class BaseScene implements Scene {
       });
     }
     return {
+      ...(this.sceneSignal ? { signal: this.sceneSignal } : {}),
       sceneKey: this.config.key,
       engine: this.runtime,
       layout,
