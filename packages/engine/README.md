@@ -3,7 +3,8 @@
 ## Renderer modules
 
 The main SDK supports Pixi, Three and a Three world with a Pixi UI overlay.
-Engine `0.0.13` and tooling `0.2.2` publish these renderer modules.
+Engine `0.0.14` adds declarative `ThreeViewport` layouts, owned embedded Three scenes
+and pointer lifecycle recovery. Tooling `0.2.3` requires this engine as a peer.
 Run `npm run pack:local` in the SDK workspace for compiled tarballs, checksums
 and installation instructions.
 
@@ -19,7 +20,7 @@ A game selects one renderer composition:
 import { ThreeRendererModule } from '@gamedevland/engine/renderers/three';
 // Or PixiRendererModule from /renderers/pixi.
 // Or HybridRendererModule from /renderers/hybrid for a Three world and Pixi UI.
-// Or PixiThreeTextureRendererModule from /renderers/hybrid for component-owned Three textures in Pixi.
+// Or PixiThreeTextureRendererModule from /renderers/hybrid for ThreeViewport layouts or custom Three textures in Pixi.
 ```
 
 The Three module accepts a decoded quality profile, for example
@@ -77,6 +78,12 @@ engine-owned decoded JSON contract rather than third-party emitter types.
   Components/actions should own the returned tween with `ownTween()`.
 
 ### Assets and lifecycle
+
+`PixiThreeTextureRendererModule` includes the `ThreeViewport` Pixi leaf for a
+declarative embedded Three scene. Set `props.sceneLayout`, `camera`, `width` and
+`height`; optionally set `resolution`, `exposure` and `renderMode` (`on-demand` or
+`always`). The viewport owns its scene graph, renderer and texture. See the
+[JSON example and lifecycle contract](MIGRATION_RENDERERS.md#declarative-threeviewport).
 
 Pixi includes the leaf `NineSliceSprite` node. Its required props are `asset`,
 `leftWidth`, `rightWidth`, `topHeight` and `bottomHeight`; the borders must leave

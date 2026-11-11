@@ -36,6 +36,9 @@ export interface ElementNodeClass {
 
 /**
  * Element factory function resolved by the layout builder.
+ * An optional result.prepare callback is awaited after tree assembly, before
+ * component readiness. Resources belong to result.object and are released by
+ * its destroy lifecycle, including when preparation fails.
  *
  * @example
  * const factory: ElementFactory = (id, cfg, ctx) => ({

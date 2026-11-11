@@ -10,6 +10,7 @@ import {
   NoToneMapping,
 } from "three";
 import { ThreeRendererSettings } from "./ThreeRendererSettings";
+import { ThreeCameraProjection } from './ThreeCameraProjection';
 import { ThreeGroup } from "./ThreeGroup";
 import { ThreeNode } from "./ThreeNode";
 import { ThreeProperties } from "./ThreeProperties";
@@ -76,20 +77,7 @@ export class ThreeRuntime implements RenderRuntime {
     const camera = this.camera;
     if (!camera || !this.snapshot) return;
     const aspect = this.snapshot.viewport.width / this.snapshot.viewport.height;
-    if (camera instanceof PerspectiveCamera) {
-      camera.aspect = aspect;
-      camera.updateProjectionMatrix();
-    }
-    if (camera instanceof OrthographicCamera) {
-      const height: unknown = camera.userData["worldHeight"];
-      if (typeof height !== "number")
-        throw new Error("Orthographic camera world height is missing");
-      camera.top = height / 2;
-      camera.bottom = -height / 2;
-      camera.left = (-height * aspect) / 2;
-      camera.right = (height * aspect) / 2;
-      camera.updateProjectionMatrix();
-    }
+    ThreeCameraProjection.update(camera, aspect);
   }
   createRoot(): ThreeGroup {
     return new ThreeGroup();

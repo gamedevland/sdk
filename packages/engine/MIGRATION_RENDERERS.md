@@ -63,6 +63,70 @@ See the repository validation report for the tested games and browser scope.
 
 ## Three content embedded in a Pixi layout
 
+### Declarative ThreeViewport
+
+`PixiThreeTextureRendererModule` registers the Pixi leaf element `ThreeViewport`.
+It renders a separate Three layout into its texture; it cannot declare `children`
+or `props.asset`. No custom surface-owning component is required.
+
+```json
+{
+  "itemPreview": {
+    "type": "ThreeViewport",
+    "props": {
+      "x": 320,
+      "y": 240,
+      "width": 400,
+      "height": 400,
+      "resolution": 1,
+      "sceneLayout": "json/layouts/previews/item.json",
+      "camera": "world.camera",
+      "renderMode": "on-demand"
+    }
+  }
+}
+```
+
+`sceneLayout` is a JSON asset ID, resolved through the regular layout loader,
+including validation, `$include` and inheritance. Use `Group`, `Mesh`, `Model`,
+camera and light elements in that file. The `camera` path is local to that Three
+layout and must name a perspective or orthographic camera. Each viewport builds
+an independent graph, so the same IDs can be reused across previews. These IDs
+are absent from the enclosing Pixi layout. GLB assets referenced by `Model` must
+be loaded before building the viewport, as in other Three layouts.
+
+`width` and `height` are required positive numbers (at least 1). Optional
+`resolution` is 0.25–2 (default 1); `exposure` is 0.01–10 (default 1).
+Standard Pixi position, anchor, scale, alpha and input behavior apply.
+`renderMode` defaults to `on-demand`: the initial image is rendered on readiness,
+then only after invalidation or texture resize. Use `always` for animated Three
+components or tweens. Both modes use the engine presentation phase and pause
+with the enclosing layout; no separate animation loop is created.
+
+Import `ThreeViewport` from `@gamedevland/engine/renderers/hybrid`. From an owning
+component/action, use `viewport.world.requireNode(id, ThreeNode)` to access its
+Three nodes and `viewport.invalidate()` after visual changes in on-demand mode.
+The `world` facade is available in component `onReady`, after asynchronous layout
+preparation. Embedded components/actions use normal DI registrations and lifecycle.
+
+`viewport.resize(width, height, resolution?)` resizes the offscreen target,
+updates the camera projection and schedules a redraw, preserving Pixi transforms.
+Call it from the owning responsive component when the required texture dimensions
+change. Ordinary Pixi scaling changes display size without reallocating the target.
+The internal component ID `$threeViewport` is reserved.
+
+Destruction releases the embedded graph, model leases, native renderer, texture
+and presentation subscription. Build failures roll back prepared viewports too.
+Pointer routing stays on the Pixi leaf; the embedded graph has no automatic
+Three raycasting. Each viewport owns a WebGL context and copies pixels into Pixi,
+so use these targets for bounded embedded content.
+
+See `examples/three-viewport/layout.json` and `preview.json` in the SDK repository
+for a complete pair of JSON layouts. Place `preview.json` at the authored asset
+ID in your game. Dynamic Pixi prefabs can also contain a `ThreeViewport`.
+
+### Programmatic surfaces
+
 Use `PixiThreeTextureRendererModule` from `/renderers/hybrid` to retain Pixi as the
 primary renderer and enable SDK-loaded GLB assets. A node component owns a
 `ThreeTextureSurface({width, height, resolution})`, assigns its `texture` to a

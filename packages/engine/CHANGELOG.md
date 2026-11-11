@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.14 — 2026-11-11
+
+- Add declarative `ThreeViewport` Pixi elements with isolated Three layouts, camera projection resize, on-demand/continuous presentation and owned resource cleanup.
+- Await optional element factory preparation before layout/prefab activation, with rollback on preparation failure.
+- Preserve pointer lifecycle observations before UI routing and cancel gestures on lost pointer capture; carried forward from the Rings integration package.
+
 ## 0.0.13 — 2026-11-10
 
 - Add explicit Pixi, Three and hybrid renderer modules with isolated runtime/declaration graphs.

@@ -9,6 +9,7 @@ import type { ElementConfig } from '../types';
 
 /** Shared orchestration for both renderers and prefabs. */
 export class ElementCreator {
+  private readonly preparations: Array<() => Promise<void>> = [];
   constructor(private readonly ctx: BuildContext, private readonly registry: BuiltElementsRegistry,
     private readonly properties: LayoutProperties) {}
   create(id: string, cfg: ElementConfig, parent?: BuiltElement): BuiltElement {
@@ -18,6 +19,7 @@ export class ElementCreator {
       createChild: (childId, childCfg) => this.create(childId, childCfg),
     });
     const built = this.registry.add(id, cfg, created.object, parent?.id);
+    if (created.prepare) this.preparations.push(created.prepare);
     built.object.id = id;
     built.object.engine = this.ctx.engine;
     this.properties.apply(built.object, cfg);
@@ -32,5 +34,8 @@ export class ElementCreator {
       built.object.attach(child.object);
     }
     return built;
+  }
+  async prepare(): Promise<void> {
+    for (const prepare of this.preparations) await prepare();
   }
 }

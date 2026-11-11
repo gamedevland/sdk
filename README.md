@@ -18,6 +18,8 @@ such as `@gamedevland/engine/assets` and `@gamedevland/engine/scenes`.
 
 | Date | Package | Version | Summary |
 | --- | --- | --- | --- |
+| 2026-11-11 | Engine | [0.0.14](packages/engine/CHANGELOG.md#0014--2026-11-11) | Add declarative ThreeViewport layouts and pointer lifecycle recovery. |
+| 2026-11-11 | Vite | [0.2.3](packages/vite/CHANGELOG.md#023--2026-11-11) | Use engine 0.0.14 as the shared peer for new projects. |
 | 2026-11-10 | Engine | [0.0.13](packages/engine/CHANGELOG.md#0013--2026-11-10) | Add Pixi/Three/hybrid renderers and embedded Three textures; fix warmup/audio cleanup and add explicit resource/storage ownership. |
 | 2026-11-10 | Vite | [0.2.2](packages/vite/CHANGELOG.md#022--2026-11-10) | Generate renderer-aware projects and use a single engine peer. |
 | 2026-11-07 | Engine | [0.0.12](packages/engine/CHANGELOG.md#0012--2026-11-07) | Add Playgama Bridge v2: ads, saves, lifecycle and host pause/audio. |
@@ -48,7 +50,7 @@ See the full [engine changelog](packages/engine/CHANGELOG.md),
 To create a blank game with dependencies installed:
 
 ```bash
-npx --yes --package @gamedevland/vite@0.2.2 gamedevland create my-game
+npx --yes --package @gamedevland/vite@0.2.3 gamedevland create my-game
 cd my-game
 npm run dev
 ```

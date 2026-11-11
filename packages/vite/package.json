@@ -1,6 +1,6 @@
 {
   "name": "@gamedevland/vite",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "description": "Vite build tooling for Gamedev Land HTML5 games.",
   "license": "MIT",
@@ -50,7 +50,7 @@
   },
   "peerDependencies": {
     "vite": "^7.1.0 || ^8.0.0",
-    "@gamedevland/engine": "0.0.13"
+    "@gamedevland/engine": "^0.0.14"
   },
   "repository": {
     "type": "git",

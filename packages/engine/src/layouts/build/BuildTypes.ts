@@ -46,6 +46,8 @@ export interface BuildResult {
 export interface CreatedElement {
   id: string;
   object: NodeBase;
+  /** Await owned resources after tree assembly and before component readiness. */
+  prepare?: () => Promise<void>;
 }
 
 export interface ElementFactoryContext {

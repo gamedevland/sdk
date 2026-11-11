@@ -4,11 +4,12 @@ import { ElementCreator } from './ElementCreator';
 import type { BuildContext, BuildResult } from './BuildTypes';
 import type { LayoutFile } from '../types';
 import type { NodeBase } from '../NodeBase';
+import type { LayoutRenderCapabilities } from '../../rendering/types';
 export class LayoutBuilder {
-  constructor(private readonly ctx: BuildContext) {}
+  constructor(private readonly ctx: BuildContext, private readonly capabilities?: LayoutRenderCapabilities) {}
   async build(layout: LayoutFile, propertiesRoot?: NodeBase): Promise<BuildResult> {
     if (!this.ctx.engine) throw new Error('Layout build requires an engine');
-    const renderer = this.ctx.engine.rendering;
+    const renderer = this.capabilities ?? this.ctx.engine.rendering;
     const root = renderer.createRoot();
     const elements = new BuiltElementsRegistry();
     const creator = new ElementCreator(this.ctx, elements, renderer.createProperties(this.ctx, propertiesRoot ?? root));
@@ -18,6 +19,7 @@ export class LayoutBuilder {
         root.addChild(id, built.object);
         root.attach(built.object);
       }
+      await creator.prepare();
       return {root, elements: elements.toMap()};
     } catch (cause) {
       const cleanup = await Promise.allSettled([...Array.from(elements.entries(), el => el.object.destroy()), root.destroy()]);

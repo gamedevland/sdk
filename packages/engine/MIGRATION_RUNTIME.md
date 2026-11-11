@@ -103,7 +103,10 @@ capabilities are separate narrow ports.
 ## Three rendered into Pixi
 
 Use `PixiThreeTextureRendererModule` for a Pixi game with Three assets rendered into
-component-owned `ThreeTextureSurface` objects. This is distinct from
+declarative `ThreeViewport` elements or component-owned `ThreeTextureSurface`
+objects. `ThreeViewport` awaits its isolated Three layout before component readiness
+and owns its graph, leases, surface and presentation subscription; see
+MIGRATION_RENDERERS.md. This is distinct from
 `HybridRendererModule`, which owns two DOM surfaces. Components dispose their Three
 scene resources, GLB leases and surfaces. The surface owns only its WebGL renderer
 and dynamic Pixi texture, including premultiplied-alpha canvas upload.

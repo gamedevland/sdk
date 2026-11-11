@@ -73,6 +73,9 @@ jobs:
       - name: Test engine
         run: npm test --workspace @gamedevland/engine
 
+      - name: Test pointer lifecycle
+        run: npm run test:input-lifecycle
+
       - name: Test renderer contracts
         run: npm run test:renderers
 

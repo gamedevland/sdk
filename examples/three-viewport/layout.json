@@ -1,0 +1,15 @@
+{
+  "itemPreview": {
+    "type": "ThreeViewport",
+    "props": {
+      "x": 320,
+      "y": 240,
+      "width": 400,
+      "height": 400,
+      "resolution": 1,
+      "sceneLayout": "json/layouts/previews/item.json",
+      "camera": "world.camera",
+      "renderMode": "on-demand"
+    }
+  }
+}

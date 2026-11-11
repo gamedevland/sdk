@@ -13,6 +13,7 @@ import { LayoutResolver } from './LayoutResolver';
 
 import type { BuildOptions, BuildResult } from '../build/BuildTypes';
 import type { LayoutRuntime } from '@engine/core';
+import type { LayoutRenderCapabilities } from '../../rendering/types';
 
 type BuildContextWithEngine = ReturnType<BuildContextFactory['create']> & { engine?: LayoutRuntime };
 
@@ -29,6 +30,7 @@ export class LayoutIntegrator {
     engine: LayoutRuntime,
     layoutName: string,
     options?: BuildOptions,
+    capabilities?: LayoutRenderCapabilities,
   ): Promise<BuildResult> {
     const loader = new LayoutLoader(new AssetManagerLayoutAssetReader(engine));
     const resolved = await new LayoutResolver(loader).resolveByName(layoutName);
@@ -50,6 +52,6 @@ export class LayoutIntegrator {
     if (textStylesConfigId !== undefined) {
       ctx.textStylesConfigId = textStylesConfigId;
     }
-    return new LayoutBuilder(ctx).build(resolved);
+    return new LayoutBuilder(ctx, capabilities).build(resolved);
   }
 }

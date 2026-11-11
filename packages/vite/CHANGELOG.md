@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3 — 2026-11-11
+
+- Require engine 0.0.14 as a peer so new projects and Rings consumers use the declarative ThreeViewport API with one engine copy.
+
 ## 0.2.2 — 2026-11-10
 
 - Generate projects with explicit Pixi renderer setup and public renderer imports.
